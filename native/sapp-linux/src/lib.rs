@@ -449,8 +449,8 @@ pub unsafe extern "C" fn _sapp_x11_create_window(mut visual: *mut Visual, mut de
         get_val(&_sapp_x11_root),
         0 as libc::c_int,
         0 as libc::c_int,
-        _sapp.window_width as libc::c_uint,
-        _sapp.window_height as libc::c_uint,
+        get_val(&_sapp).window_width as libc::c_uint,
+        get_val(&_sapp).window_height as libc::c_uint,
         0 as libc::c_int as libc::c_uint,
         depth,
         InputOutput as libc::c_uint,
@@ -477,12 +477,12 @@ pub unsafe extern "C" fn _sapp_x11_create_window(mut visual: *mut Visual, mut de
     );
     let mut hints = XAllocSizeHints();
     (*hints).flags |= PWinGravity;
-    if _sapp.desc.window_resizable == false {
+    if get_val(&_sapp).desc.window_resizable == false {
         (*hints).flags |= PMinSize | PMaxSize;
-        (*hints).min_width = _sapp.desc.width;
-        (*hints).min_height = _sapp.desc.height;
-        (*hints).max_width = _sapp.desc.width;
-        (*hints).max_height = _sapp.desc.height;
+        (*hints).min_width = get_val(&_sapp).desc.width;
+        (*hints).min_height = get_val(&_sapp).desc.height;
+        (*hints).max_width = get_val(&_sapp).desc.width;
+        (*hints).max_height = get_val(&_sapp).desc.height;
     }
     (*hints).win_gravity = StaticGravity;
     XSetWMNormalHints(get_val(&_sapp_x11_display), _sapp_x11_window, hints);
@@ -520,54 +520,54 @@ pub unsafe extern "C" fn _sapp_strcpy(
 }
 pub unsafe extern "C" fn _sapp_init_state(mut desc: *const sapp_desc) {
     memset(
-        &mut _sapp as *mut _sapp_state as *mut libc::c_void,
+        &mut get_val(&_sapp) as *mut _sapp_state as *mut libc::c_void,
         0 as libc::c_int,
         ::std::mem::size_of::<_sapp_state>() as libc::c_ulong,
     );
-    _sapp.desc = *desc;
-    _sapp.first_frame = true;
-    _sapp.window_width = if _sapp.desc.width == 0 as libc::c_int {
+    get_val_mut(&_sapp).desc = *desc;
+    get_val_mut(&_sapp).first_frame = true;
+    get_val_mut(&_sapp).window_width = if get_val(&_sapp).desc.width == 0 as libc::c_int {
         640 as libc::c_int
     } else {
-        _sapp.desc.width
+        get_val(&_sapp).desc.width
     };
-    _sapp.window_height = if _sapp.desc.height == 0 as libc::c_int {
+    get_val_mut(&_sapp).window_height = if get_val(&_sapp).desc.height == 0 as libc::c_int {
         480 as libc::c_int
     } else {
-        _sapp.desc.height
+        get_val(&_sapp).desc.height
     };
-    _sapp.framebuffer_width = _sapp.window_width;
-    _sapp.framebuffer_height = _sapp.window_height;
-    _sapp.sample_count = if _sapp.desc.sample_count == 0 as libc::c_int {
+    get_val_mut(&_sapp).framebuffer_width = get_val(&_sapp).window_width;
+    get_val_mut(&_sapp).framebuffer_height = get_val(&_sapp).window_height;
+    get_val_mut(&_sapp).sample_count = if get_val(&_sapp).desc.sample_count == 0 as libc::c_int {
         1 as libc::c_int
     } else {
-        _sapp.desc.sample_count
+        get_val(&_sapp).desc.sample_count
     };
-    _sapp.swap_interval = if _sapp.desc.swap_interval == 0 as libc::c_int {
+    get_val_mut(&_sapp).swap_interval = if get_val(&_sapp).desc.swap_interval == 0 as libc::c_int {
         1 as libc::c_int
     } else {
-        _sapp.desc.swap_interval
+        get_val(&_sapp).desc.swap_interval
     };
-    _sapp.html5_canvas_name = if _sapp.desc.html5_canvas_name.is_null() {
+    get_val_mut(&_sapp).html5_canvas_name = if get_val(&_sapp).desc.html5_canvas_name.is_null() {
         b"canvas\x00" as *const u8 as *const libc::c_char
     } else {
-        _sapp.desc.html5_canvas_name
+        get_val(&_sapp).desc.html5_canvas_name
     };
-    _sapp.html5_ask_leave_site = _sapp.desc.html5_ask_leave_site;
-    if !_sapp.desc.window_title.is_null() {
+    get_val_mut(&_sapp).html5_ask_leave_site = get_val(&_sapp).desc.html5_ask_leave_site;
+    if !get_val(&_sapp).desc.window_title.is_null() {
         _sapp_strcpy(
-            _sapp.desc.window_title,
-            _sapp.window_title.as_mut_ptr(),
+            get_val(&_sapp).desc.window_title,
+            get_val(&_sapp).window_title.as_mut_ptr(),
             ::std::mem::size_of::<[libc::c_char; 128]>() as libc::c_ulong as libc::c_int,
         );
     } else {
         _sapp_strcpy(
             b"sokol_app\x00" as *const u8 as *const libc::c_char,
-            _sapp.window_title.as_mut_ptr(),
+            get_val(&_sapp).window_title.as_mut_ptr(),
             ::std::mem::size_of::<[libc::c_char; 128]>() as libc::c_ulong as libc::c_int,
         );
     }
-    _sapp.dpi_scale = 1.0f32;
+    get_val_mut(&_sapp).dpi_scale = 1.0f32;
 }
 pub unsafe extern "C" fn _sapp_x11_query_system_dpi() {
     let mut rms = XResourceManagerString(get_val(&_sapp_x11_display));
@@ -591,14 +591,21 @@ pub unsafe extern "C" fn _sapp_x11_query_system_dpi() {
                     && strcmp(type_, b"String\x00" as *const u8 as *const libc::c_char)
                         == 0 as libc::c_int
                 {
-                    _sapp_x11_dpi = atof(value.addr as *const libc::c_char) as libc::c_float
+                    set_val(&_sapp_x11_dpi, atof(value.addr as *const libc::c_char) as libc::c_float)
                 }
             }
             XrmDestroyDatabase(db);
         }
     };
 }
-pub static mut _sapp_x11_dpi: libc::c_float = 0.;
+
+thread_local! {
+    pub static _sapp_x11_dpi: RefCell<libc::c_float> = RefCell::new(0.);
+}
+
+//pub static mut _sapp_x11_dpi: libc::c_float = 0.;
+
+
 pub unsafe extern "C" fn _sapp_x11_init_extensions() {
     _sapp_x11_UTF8_STRING = XInternAtom(
         get_val(&_sapp_x11_display),
@@ -826,8 +833,8 @@ pub unsafe extern "C" fn _sapp_x11_update_window_title() {
     Xutf8SetWMProperties(
         get_val(&_sapp_x11_display),
         _sapp_x11_window,
-        _sapp.window_title.as_mut_ptr(),
-        _sapp.window_title.as_mut_ptr(),
+        get_val(&_sapp).window_title.as_mut_ptr(),
+        get_val(&_sapp).window_title.as_mut_ptr(),
         std::ptr::null_mut(),
         0 as libc::c_int,
         std::ptr::null_mut(),
@@ -841,8 +848,8 @@ pub unsafe extern "C" fn _sapp_x11_update_window_title() {
         _sapp_x11_UTF8_STRING,
         8 as libc::c_int,
         PropModeReplace,
-        _sapp.window_title.as_mut_ptr() as *mut libc::c_uchar,
-        strlen(_sapp.window_title.as_mut_ptr()) as libc::c_int,
+        get_val(&_sapp).window_title.as_mut_ptr() as *mut libc::c_uchar,
+        strlen(get_val(&_sapp).window_title.as_mut_ptr()) as libc::c_int,
     );
     XChangeProperty(
         get_val(&_sapp_x11_display),
@@ -851,8 +858,8 @@ pub unsafe extern "C" fn _sapp_x11_update_window_title() {
         _sapp_x11_UTF8_STRING,
         8 as libc::c_int,
         PropModeReplace,
-        _sapp.window_title.as_mut_ptr() as *mut libc::c_uchar,
-        strlen(_sapp.window_title.as_mut_ptr()) as libc::c_int,
+        get_val(&_sapp).window_title.as_mut_ptr() as *mut libc::c_uchar,
+        strlen(get_val(&_sapp).window_title.as_mut_ptr()) as libc::c_int,
     );
     XFlush(get_val(&_sapp_x11_display));
 }
@@ -883,10 +890,10 @@ pub unsafe extern "C" fn _sapp_x11_query_window_size() {
         screen: 0 as *mut Screen,
     };
     XGetWindowAttributes(get_val(&_sapp_x11_display), _sapp_x11_window, &mut attribs);
-    _sapp.window_width = attribs.width;
-    _sapp.window_height = attribs.height;
-    _sapp.framebuffer_width = _sapp.window_width;
-    _sapp.framebuffer_height = _sapp.framebuffer_height;
+    get_val_mut(&_sapp).window_width = attribs.width;
+    get_val_mut(&_sapp).window_height = attribs.height;
+    get_val_mut(&_sapp).framebuffer_width = get_val(&_sapp).window_width;
+    get_val_mut(&_sapp).framebuffer_height = get_val(&_sapp).framebuffer_height;
 }
 pub static mut _sapp_glx_ARB_create_context: bool = false;
 pub static mut _sapp_glx_ARB_create_context_profile: bool = false;
@@ -1127,8 +1134,8 @@ pub unsafe extern "C" fn _sapp_glx_choosefbconfig() -> GLXFBConfig {
     desired.depth_bits = 24;
     desired.stencil_bits = 8;
     desired.doublebuffer = true;
-    desired.samples = if _sapp.sample_count > 1 {
-        _sapp.sample_count
+    desired.samples = if get_val(&_sapp).sample_count > 1 {
+        get_val(&_sapp).sample_count
     } else {
         0
     };
@@ -1355,19 +1362,19 @@ pub unsafe extern "C" fn _sapp_glx_make_current() {
 pub unsafe extern "C" fn _sapp_x11_char_event(mut chr: u32, mut repeat: bool, mut mods: u32) {
     if _sapp_events_enabled() {
         _sapp_init_event(sapp_event_type_SAPP_EVENTTYPE_CHAR);
-        _sapp.event.char_code = chr;
-        _sapp.event.key_repeat = repeat;
-        _sapp.event.modifiers = mods;
-        _sapp_call_event(&mut _sapp.event);
+        get_val_mut(&_sapp).event.char_code = chr;
+        get_val_mut(&_sapp).event.key_repeat = repeat;
+        get_val_mut(&_sapp).event.modifiers = mods;
+        _sapp_call_event(&mut get_val_mut(&_sapp).event);
     };
 }
 
 pub unsafe extern "C" fn _sapp_x11_raw_device_event(dx: f32, dy: f32) {
     if _sapp_events_enabled() {
         _sapp_init_event(sapp_event_type_SAPP_EVENTTYPE_RAW_DEVICE);
-        _sapp.event.mouse_dx = dx;
-        _sapp.event.mouse_dy = dy;
-        _sapp_call_event(&mut _sapp.event);
+        get_val_mut(&_sapp).event.mouse_dx = dx;
+        get_val_mut(&_sapp).event.mouse_dy = dy;
+        _sapp_call_event(&mut get_val_mut(&_sapp).event);
     };
 }
 
@@ -2240,10 +2247,10 @@ pub unsafe extern "C" fn _sapp_x11_key_event(
 ) {
     if _sapp_events_enabled() {
         _sapp_init_event(type_);
-        _sapp.event.key_code = key;
-        _sapp.event.key_repeat = repeat;
-        _sapp.event.modifiers = mods;
-        _sapp_call_event(&mut _sapp.event);
+        get_val_mut(&_sapp).event.key_code = key;
+        get_val_mut(&_sapp).event.key_repeat = repeat;
+        get_val_mut(&_sapp).event.modifiers = mods;
+        _sapp_call_event(&mut get_val_mut(&_sapp).event);
     };
 }
 pub unsafe extern "C" fn _sapp_x11_translate_key(mut scancode: libc::c_int) -> sapp_keycode {
@@ -2388,10 +2395,10 @@ pub unsafe extern "C" fn _sapp_x11_scroll_event(
 ) {
     if _sapp_events_enabled() {
         _sapp_init_event(sapp_event_type_SAPP_EVENTTYPE_MOUSE_SCROLL);
-        _sapp.event.modifiers = mods;
-        _sapp.event.scroll_x = x;
-        _sapp.event.scroll_y = y;
-        _sapp_call_event(&mut _sapp.event);
+        get_val_mut(&_sapp).event.modifiers = mods;
+        get_val_mut(&_sapp).event.scroll_x = x;
+        get_val_mut(&_sapp).event.scroll_y = y;
+        _sapp_call_event(&mut get_val_mut(&_sapp).event);
     };
 }
 pub unsafe extern "C" fn _sapp_x11_translate_button(mut event: *const XEvent) -> sapp_mousebutton {
@@ -2409,11 +2416,11 @@ pub unsafe extern "C" fn _sapp_x11_mouse_event(
 ) {
     if _sapp_events_enabled() {
         _sapp_init_event(type_);
-        _sapp.event.mouse_button = btn;
-        _sapp.event.modifiers = mods;
-        _sapp.event.mouse_x = _sapp.mouse_x;
-        _sapp.event.mouse_y = _sapp.mouse_y;
-        _sapp_call_event(&mut _sapp.event);
+        get_val_mut(&_sapp).event.mouse_button = btn;
+        get_val_mut(&_sapp).event.modifiers = mods;
+        get_val_mut(&_sapp).event.mouse_x = get_val(&_sapp).mouse_x;
+        get_val_mut(&_sapp).event.mouse_y = get_val(&_sapp).mouse_y;
+        _sapp_call_event(&mut get_val_mut(&_sapp).event);
     };
 }
 pub unsafe extern "C" fn _sapp_x11_mod(mut x11_mods: libc::c_int) -> u32 {
@@ -2440,6 +2447,11 @@ pub fn get_val<F: Copy>(a: &'static std::thread::LocalKey<RefCell<F>>) -> F {
     let c = a.with(|val| val.as_ptr());
     unsafe {*c}
 }
+
+pub fn get_val_mut<F: Copy>(a: &'static std::thread::LocalKey<RefCell<F>>) -> &mut F {
+    unsafe {&mut *a.with(|val| val.as_ptr())}
+}
+
 
 pub fn set_val<F>(a: &'static std::thread::LocalKey<RefCell<F>>, b: F) {
     a.with(|val| *val.borrow_mut() = b);
@@ -2577,8 +2589,8 @@ pub unsafe extern "C" fn _sapp_x11_process_event(mut event: *mut XEvent) {
             );
         }
         6 => {
-            _sapp.mouse_x = (*event).xmotion.x as libc::c_float;
-            _sapp.mouse_y = (*event).xmotion.y as libc::c_float;
+            get_val_mut(&_sapp).mouse_x = (*event).xmotion.x as libc::c_float;
+            get_val_mut(&_sapp).mouse_y = (*event).xmotion.y as libc::c_float;
             _sapp_x11_mouse_event(
                 sapp_event_type_SAPP_EVENTTYPE_MOUSE_MOVE,
                 sapp_mousebutton_SAPP_MOUSEBUTTON_INVALID,
@@ -2586,13 +2598,13 @@ pub unsafe extern "C" fn _sapp_x11_process_event(mut event: *mut XEvent) {
             );
         }
         22 => {
-            if (*event).xconfigure.width != _sapp.window_width
-                || (*event).xconfigure.height != _sapp.window_height
+            if (*event).xconfigure.width != get_val(&_sapp).window_width
+                || (*event).xconfigure.height != get_val(&_sapp).window_height
             {
-                _sapp.window_width = (*event).xconfigure.width;
-                _sapp.window_height = (*event).xconfigure.height;
-                _sapp.framebuffer_width = _sapp.window_width;
-                _sapp.framebuffer_height = _sapp.window_height;
+                get_val_mut(&_sapp).window_width = (*event).xconfigure.width;
+                get_val_mut(&_sapp).window_height = (*event).xconfigure.height;
+                get_val_mut(&_sapp).framebuffer_width = get_val(&_sapp).window_width;
+                get_val_mut(&_sapp).framebuffer_height = get_val(&_sapp).window_height;
                 _sapp_x11_app_event(sapp_event_type_SAPP_EVENTTYPE_RESIZED);
             }
         }
@@ -2615,7 +2627,7 @@ pub unsafe extern "C" fn _sapp_x11_process_event(mut event: *mut XEvent) {
             if (*event).xclient.message_type == _sapp_x11_WM_PROTOCOLS {
                 let protocol = (*event).xclient.data.l[0 as libc::c_int as usize] as Atom;
                 if protocol == _sapp_x11_WM_DELETE_WINDOW {
-                    _sapp.quit_requested = true
+                    get_val_mut(&_sapp).quit_requested = true
                 }
             }
         }
@@ -2641,87 +2653,87 @@ pub unsafe extern "C" fn _sapp_x11_process_event(mut event: *mut XEvent) {
     };
 }
 pub unsafe extern "C" fn _sapp_call_init() {
-    if _sapp.desc.init_cb.is_some() {
-        _sapp.desc.init_cb.expect("non-null function pointer")();
-    } else if _sapp.desc.init_userdata_cb.is_some() {
-        _sapp
+    if get_val(&_sapp).desc.init_cb.is_some() {
+        get_val(&_sapp).desc.init_cb.expect("non-null function pointer")();
+    } else if get_val(&_sapp).desc.init_userdata_cb.is_some() {
+        get_val(&_sapp)
             .desc
             .init_userdata_cb
-            .expect("non-null function pointer")(_sapp.desc.user_data);
+            .expect("non-null function pointer")(get_val(&_sapp).desc.user_data);
     }
-    _sapp.init_called = true;
+    get_val_mut(&_sapp).init_called = true;
 }
 pub unsafe extern "C" fn _sapp_call_frame() {
-    if _sapp.init_called as libc::c_int != 0 && !_sapp.cleanup_called {
-        if _sapp.desc.frame_cb.is_some() {
-            _sapp.desc.frame_cb.expect("non-null function pointer")();
-        } else if _sapp.desc.frame_userdata_cb.is_some() {
-            _sapp
+    if get_val(&_sapp).init_called as libc::c_int != 0 && !get_val(&_sapp).cleanup_called {
+        if get_val(&_sapp).desc.frame_cb.is_some() {
+            get_val(&_sapp).desc.frame_cb.expect("non-null function pointer")();
+        } else if get_val(&_sapp).desc.frame_userdata_cb.is_some() {
+            get_val(&_sapp)
                 .desc
                 .frame_userdata_cb
-                .expect("non-null function pointer")(_sapp.desc.user_data);
+                .expect("non-null function pointer")(get_val(&_sapp).desc.user_data);
         }
     };
 }
 pub unsafe extern "C" fn _sapp_frame() {
-    if _sapp.first_frame {
-        _sapp.first_frame = false;
+    if get_val(&_sapp).first_frame {
+        get_val_mut(&_sapp).first_frame = false;
         _sapp_call_init();
     }
     _sapp_call_frame();
-    _sapp.frame_count = _sapp.frame_count.wrapping_add(1);
+    get_val_mut(&_sapp).frame_count = get_val(&_sapp).frame_count.wrapping_add(1);
 }
 pub static mut _sapp_glx_SwapBuffers: PFNGLXSWAPBUFFERSPROC = None;
 pub unsafe extern "C" fn _sapp_glx_swap_buffers() {
     _sapp_glx_SwapBuffers.expect("non-null function pointer")(get_val(&_sapp_x11_display), _sapp_glx_window);
 }
 pub unsafe extern "C" fn _sapp_events_enabled() -> bool {
-    return (_sapp.desc.event_cb.is_some() || _sapp.desc.event_userdata_cb.is_some())
-        && _sapp.init_called as libc::c_int != 0;
+    return (get_val(&_sapp).desc.event_cb.is_some() || get_val(&_sapp).desc.event_userdata_cb.is_some())
+        && get_val(&_sapp).init_called as libc::c_int != 0;
 }
 pub unsafe extern "C" fn _sapp_init_event(mut type_: sapp_event_type) {
     memset(
-        &mut _sapp.event as *mut sapp_event as *mut libc::c_void,
+        &mut get_val_mut(&_sapp).event as *mut sapp_event as *mut libc::c_void,
         0,
         ::std::mem::size_of::<sapp_event>() as libc::c_ulong,
     );
-    _sapp.event.type_ = type_;
-    _sapp.event.frame_count = _sapp.frame_count;
-    _sapp.event.mouse_button = sapp_mousebutton_SAPP_MOUSEBUTTON_INVALID;
-    _sapp.event.window_width = _sapp.window_width;
-    _sapp.event.window_height = _sapp.window_height;
-    _sapp.event.framebuffer_width = _sapp.framebuffer_width;
-    _sapp.event.framebuffer_height = _sapp.framebuffer_height;
+    get_val_mut(&_sapp).event.type_ = type_;
+    get_val_mut(&_sapp).event.frame_count = get_val(&_sapp).frame_count;
+    get_val_mut(&_sapp).event.mouse_button = sapp_mousebutton_SAPP_MOUSEBUTTON_INVALID;
+    get_val_mut(&_sapp).event.window_width = get_val(&_sapp).window_width;
+    get_val_mut(&_sapp).event.window_height = get_val(&_sapp).window_height;
+    get_val_mut(&_sapp).event.framebuffer_width = get_val(&_sapp).framebuffer_width;
+    get_val_mut(&_sapp).event.framebuffer_height = get_val(&_sapp).framebuffer_height;
 }
 pub unsafe extern "C" fn _sapp_call_event(mut e: *const sapp_event) {
-    if !_sapp.cleanup_called {
-        if _sapp.desc.event_cb.is_some() {
-            _sapp.desc.event_cb.expect("non-null function pointer")(e);
-        } else if _sapp.desc.event_userdata_cb.is_some() {
-            _sapp
+    if !get_val(&_sapp).cleanup_called {
+        if get_val(&_sapp).desc.event_cb.is_some() {
+            get_val(&_sapp).desc.event_cb.expect("non-null function pointer")(e);
+        } else if get_val(&_sapp).desc.event_userdata_cb.is_some() {
+            get_val(&_sapp)
                 .desc
                 .event_userdata_cb
-                .expect("non-null function pointer")(e, _sapp.desc.user_data);
+                .expect("non-null function pointer")(e, get_val(&_sapp).desc.user_data);
         }
     };
 }
 pub unsafe extern "C" fn _sapp_x11_app_event(mut type_: sapp_event_type) {
     if _sapp_events_enabled() {
         _sapp_init_event(type_);
-        _sapp_call_event(&mut _sapp.event);
+        _sapp_call_event(&mut get_val_mut(&_sapp).event);
     };
 }
 pub unsafe extern "C" fn _sapp_call_cleanup() {
-    if !_sapp.cleanup_called {
-        if _sapp.desc.cleanup_cb.is_some() {
-            _sapp.desc.cleanup_cb.expect("non-null function pointer")();
-        } else if _sapp.desc.cleanup_userdata_cb.is_some() {
-            _sapp
+    if !get_val(&_sapp).cleanup_called {
+        if get_val(&_sapp).desc.cleanup_cb.is_some() {
+            get_val(&_sapp).desc.cleanup_cb.expect("non-null function pointer")();
+        } else if get_val(&_sapp).desc.cleanup_userdata_cb.is_some() {
+            get_val(&_sapp)
                 .desc
                 .cleanup_userdata_cb
-                .expect("non-null function pointer")(_sapp.desc.user_data);
+                .expect("non-null function pointer")(get_val(&_sapp).desc.user_data);
         }
-        _sapp.cleanup_called = true
+        get_val_mut(&_sapp).cleanup_called = true
     };
 }
 pub static mut _sapp_glx_DestroyWindow: PFNGLXDESTROYWINDOWPROC = None;
@@ -2786,11 +2798,14 @@ pub unsafe extern "C" fn sapp_run(mut desc: *const sapp_desc) {
     // because X11 Xft.dpi may be not presented on the linux system at all
     // and _sapp_x11_query_system_dpi will keep _sapp_x11_dpi as 0
     // this hack make final dpi as 1.0 wich probably makes sense for systems without dpi (hm)
-    _sapp_x11_dpi = 96.0f32;
+    set_val(&_sapp_x11_dpi, 96.0f32);
 
     _sapp_x11_query_system_dpi();
-    _sapp.dpi_scale = if _sapp.desc.high_dpi {
-        _sapp_x11_dpi / 96.0f32
+
+    
+
+    get_val_mut(&_sapp).dpi_scale = if get_val(&_sapp).desc.high_dpi {
+        get_val(&_sapp_x11_dpi) / 96.0f32
     } else {
         1.0
     };
@@ -2801,15 +2816,15 @@ pub unsafe extern "C" fn sapp_run(mut desc: *const sapp_desc) {
     _sapp_glx_choose_visual(&mut visual, &mut depth);
     _sapp_x11_create_window(visual, depth);
     _sapp_glx_create_context();
-    _sapp.valid = true;
+    get_val_mut(&_sapp).valid = true;
     _sapp_x11_show_window();
     if (*desc).fullscreen {
         sapp_set_fullscreen(true);
     }
-    _sapp_glx_swapinterval(_sapp.swap_interval);
+    _sapp_glx_swapinterval(get_val(&_sapp).swap_interval);
     XFlush(get_val(&_sapp_x11_display));
 
-    while !_sapp.quit_ordered {
+    while !get_val(&_sapp).quit_ordered {
         _sapp_glx_make_current();
         let mut count = XPending(get_val(&_sapp_x11_display));
         loop {
@@ -2825,10 +2840,10 @@ pub unsafe extern "C" fn sapp_run(mut desc: *const sapp_desc) {
         _sapp_frame();
         _sapp_glx_swap_buffers();
         XFlush(get_val(&_sapp_x11_display));
-        if _sapp.quit_requested as libc::c_int != 0 && !_sapp.quit_ordered {
+        if get_val(&_sapp).quit_requested as libc::c_int != 0 && !get_val(&_sapp).quit_ordered {
             _sapp_x11_app_event(sapp_event_type_SAPP_EVENTTYPE_QUIT_REQUESTED);
-            if _sapp.quit_requested {
-                _sapp.quit_ordered = true
+            if get_val(&_sapp).quit_requested {
+                get_val_mut(&_sapp).quit_ordered = true
             }
         }
     }
@@ -2839,27 +2854,27 @@ pub unsafe extern "C" fn sapp_run(mut desc: *const sapp_desc) {
 }
 #[no_mangle]
 pub unsafe extern "C" fn sapp_frame_count() -> u64 {
-    return _sapp.frame_count;
+    return get_val(&_sapp).frame_count;
 }
 #[no_mangle]
 pub unsafe extern "C" fn sapp_quit() {
-    _sapp.quit_ordered = true;
+    get_val_mut(&_sapp).quit_ordered = true;
 }
 #[no_mangle]
 pub unsafe extern "C" fn sapp_cancel_quit() {
-    _sapp.quit_requested = false;
+    get_val_mut(&_sapp).quit_requested = false;
 }
 #[no_mangle]
 pub unsafe extern "C" fn sapp_request_quit() {
-    _sapp.quit_requested = true;
+    get_val_mut(&_sapp).quit_requested = true;
 }
 #[no_mangle]
 pub unsafe extern "C" fn sapp_query_desc() -> sapp_desc {
-    return _sapp.desc;
+    return get_val(&_sapp).desc;
 }
 #[no_mangle]
 pub unsafe extern "C" fn sapp_userdata() -> *mut libc::c_void {
-    return _sapp.desc.user_data;
+    return get_val(&_sapp).desc.user_data;
 }
 #[no_mangle]
 pub unsafe extern "C" fn sapp_mouse_shown() -> bool {
@@ -2935,11 +2950,11 @@ unsafe fn update_cursor() {
 }
 
 pub unsafe fn sapp_is_fullscreen() -> bool {
-    _sapp.desc.fullscreen as _
+    get_val(&_sapp).desc.fullscreen as _
 }
 
 pub unsafe fn sapp_set_fullscreen(fullscreen: bool) {
-    _sapp.desc.fullscreen = fullscreen as _;
+    get_val_mut(&_sapp).desc.fullscreen = fullscreen as _;
 
     let mut wm_state = XInternAtom(
         get_val(&_sapp_x11_display),
@@ -2975,34 +2990,121 @@ pub unsafe extern "C" fn sapp_show_mouse(mut shown: bool) {
 }
 #[no_mangle]
 pub unsafe extern "C" fn sapp_keyboard_shown() -> bool {
-    return _sapp.onscreen_keyboard_shown;
+    return get_val(&_sapp).onscreen_keyboard_shown;
 }
 #[no_mangle]
 pub unsafe extern "C" fn sapp_show_keyboard(mut shown: bool) {}
 #[no_mangle]
 pub unsafe extern "C" fn sapp_dpi_scale() -> libc::c_float {
-    return _sapp.dpi_scale;
+    return get_val(&_sapp).dpi_scale;
 }
 #[no_mangle]
 pub unsafe extern "C" fn sapp_high_dpi() -> bool {
-    return _sapp.desc.high_dpi && _sapp.dpi_scale > 1.5f32;
+    return get_val(&_sapp).desc.high_dpi && get_val(&_sapp).dpi_scale > 1.5f32;
 }
 #[no_mangle]
 pub unsafe extern "C" fn sapp_height() -> libc::c_int {
-    return if _sapp.framebuffer_height > 0 {
-        _sapp.framebuffer_height
+    return if get_val(&_sapp).framebuffer_height > 0 {
+        get_val(&_sapp).framebuffer_height
     } else {
         1
     };
 }
 #[no_mangle]
 pub unsafe extern "C" fn sapp_width() -> libc::c_int {
-    return if _sapp.framebuffer_width > 0 {
-        _sapp.framebuffer_width
+    return if get_val(&_sapp).framebuffer_width > 0 {
+        get_val(&_sapp).framebuffer_width
     } else {
         1
     };
 }
+
+thread_local! {
+    pub static _sapp: RefCell<_sapp_state> = RefCell::new(_sapp_state {
+        valid: false,
+        window_width: 0,
+        window_height: 0,
+        framebuffer_width: 0,
+        framebuffer_height: 0,
+        sample_count: 0,
+        swap_interval: 0,
+        dpi_scale: 0.,
+        gles2_fallback: false,
+        first_frame: false,
+        init_called: false,
+        cleanup_called: false,
+        quit_requested: false,
+        quit_ordered: false,
+        html5_canvas_name: 0 as *const libc::c_char,
+        html5_ask_leave_site: false,
+        window_title: [0; 128],
+        window_title_wide: [0; 128],
+        frame_count: 0,
+        mouse_x: 0.,
+        mouse_y: 0.,
+        win32_mouse_tracked: false,
+        onscreen_keyboard_shown: false,
+        event: sapp_event {
+            frame_count: 0,
+            type_: sapp_event_type_SAPP_EVENTTYPE_INVALID,
+            key_code: sapp_keycode_SAPP_KEYCODE_INVALID,
+            char_code: 0,
+            key_repeat: false,
+            modifiers: 0,
+            mouse_button: sapp_mousebutton_SAPP_MOUSEBUTTON_LEFT,
+            mouse_x: 0.,
+            mouse_y: 0.,
+            mouse_dx: 0.,
+            mouse_dy: 0.,
+            scroll_x: 0.,
+            scroll_y: 0.,
+            num_touches: 0,
+            touches: [sapp_touchpoint {
+                identifier: 0,
+                pos_x: 0.,
+                pos_y: 0.,
+                changed: false,
+            }; 8],
+            window_width: 0,
+            window_height: 0,
+            framebuffer_width: 0,
+            framebuffer_height: 0,
+        },
+        desc: sapp_desc {
+            init_cb: None,
+            frame_cb: None,
+            cleanup_cb: None,
+            event_cb: None,
+            fail_cb: None,
+            user_data: 0 as *const libc::c_void as *mut libc::c_void,
+            init_userdata_cb: None,
+            frame_userdata_cb: None,
+            cleanup_userdata_cb: None,
+            event_userdata_cb: None,
+            fail_userdata_cb: None,
+            width: 0,
+            height: 0,
+            window_resizable: false,
+            sample_count: 0,
+            swap_interval: 0,
+            high_dpi: false,
+            fullscreen: false,
+            alpha: false,
+            window_title: 0 as *const libc::c_char,
+            user_cursor: false,
+            html5_canvas_name: 0 as *const libc::c_char,
+            html5_canvas_resize: false,
+            html5_preserve_drawing_buffer: false,
+            html5_premultiplied_alpha: false,
+            html5_ask_leave_site: false,
+            ios_keyboard_resizes_canvas: false,
+            gl_force_gles2: false,
+        },
+        keycodes: [sapp_keycode_SAPP_KEYCODE_INVALID; 512],
+    });
+}
+
+/* 
 pub static mut _sapp: _sapp_state = _sapp_state {
     valid: false,
     window_width: 0,
@@ -3085,9 +3187,10 @@ pub static mut _sapp: _sapp_state = _sapp_state {
     },
     keycodes: [sapp_keycode_SAPP_KEYCODE_INVALID; 512],
 };
+*/
 #[no_mangle]
 pub unsafe extern "C" fn sapp_isvalid() -> bool {
-    return _sapp.valid;
+    return get_val(&_sapp).valid;
 }
 #[no_mangle]
 pub unsafe fn sapp_is_elapsed_timer_supported() -> bool {
