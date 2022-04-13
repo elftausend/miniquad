@@ -609,9 +609,6 @@ thread_local! {
     pub static _sapp_x11_dpi: RefCell<libc::c_float> = RefCell::new(0.);
 }
 
-//pub static mut _sapp_x11_dpi: libc::c_float = 0.;
-
-
 pub unsafe extern "C" fn _sapp_x11_init_extensions() {
     set_val(&_sapp_x11_UTF8_STRING, XInternAtom(
         get_val(&_sapp_x11_display),
@@ -658,6 +655,7 @@ thread_local! {
     pub static _sapp_glx_GetProcAddress: RefCell<PFNGLXGETPROCADDRESSPROC> = RefCell::new(None);
     pub static _sapp_glx_GetProcAddressARB: RefCell<PFNGLXGETPROCADDRESSPROC> = RefCell::new(None);
     pub static _sapp_glx_libgl: RefCell<*mut libc::c_void> = RefCell::new(0 as *const libc::c_void as *mut libc::c_void);
+    pub static  _sapp_glx_QueryExtensionsString: RefCell<PFNGLXQUERYEXTENSIONSSTRINGPROC> = RefCell::new(None);
 }
 
 
@@ -713,12 +711,6 @@ pub unsafe fn _sapp_glx_extsupported(mut ext: &[u8], mut extensions: *const libc
         return false;
     };
 }
-
-thread_local! {
-    pub static  _sapp_glx_QueryExtensionsString: RefCell<PFNGLXQUERYEXTENSIONSSTRINGPROC> = RefCell::new(None);
-}
-
-
 
 pub unsafe extern "C" fn _sapp_glx_init() {
     let mut sonames: [*const libc::c_char; 3] = [
@@ -820,10 +812,11 @@ pub unsafe extern "C" fn _sapp_glx_init() {
 
 thread_local! {
     pub static _sapp_glx_GetVisualFromFBConfig: RefCell<PFNGLXGETVISUALFROMFBCONFIGPROC> = RefCell::new(None);
+    pub static _sapp_x11_root: RefCell<Window> = RefCell::new(0);
+    pub static _sapp_x11_NET_WM_NAME: RefCell<Atom> = RefCell::new(0);
+    pub static _sapp_x11_NET_WM_ICON_NAME: RefCell<Atom> = RefCell::new(0);
+    pub static _sapp_x11_UTF8_STRING: RefCell<Atom> = RefCell::new(0);
 }
-
-
-
 
 pub unsafe extern "C" fn _sapp_glx_choose_visual(
     mut visual: *mut *mut Visual,
@@ -844,16 +837,6 @@ pub unsafe extern "C" fn _sapp_glx_choose_visual(
     *depth = (*result).depth;
     XFree(result as *mut libc::c_void);
 }
-
-thread_local! {
-    pub static _sapp_x11_root: RefCell<Window> = RefCell::new(0);
-    pub static _sapp_x11_NET_WM_NAME: RefCell<Atom> = RefCell::new(0);
-    pub static _sapp_x11_NET_WM_ICON_NAME: RefCell<Atom> = RefCell::new(0);
-    pub static _sapp_x11_UTF8_STRING: RefCell<Atom> = RefCell::new(0);
-}
-//pub static  _sapp_x11_root: Window = 0;
-
-
 
 pub unsafe extern "C" fn _sapp_x11_update_window_title() {
     Xutf8SetWMProperties(
@@ -943,6 +926,14 @@ thread_local! {
     pub static _sapp_glx_ARB_create_context: RefCell<bool> = RefCell::new(false);
     pub static _sapp_glx_ARB_create_context_profile: RefCell<bool> = RefCell::new(false);
     pub static _sapp_x11_error_code: RefCell<libc::c_uchar> = RefCell::new(0);
+
+
+    pub static _sapp_x11_screen: RefCell<libc::c_int> = RefCell::new(0);
+    pub static _sapp_glx_GetFBConfigs: RefCell<PFNGLXGETFBCONFIGSPROC> = RefCell::new(None);
+    pub static _sapp_glx_GetClientString: RefCell<PFNGLXGETCLIENTSTRINGPROC> = RefCell::new(None);
+    pub static _sapp_glx_CreateWindow: RefCell<PFNGLXCREATEWINDOWPROC> = RefCell::new(None);
+    pub static _sapp_glx_ARB_multisample: RefCell<bool> = RefCell::new(false);
+    pub static _sapp_glx_GetFBConfigAttrib: RefCell<PFNGLXGETFBCONFIGATTRIBPROC> = RefCell::new(None);
 }
 
 pub const GLX_CONTEXT_MAJOR_VERSION_ARB: libc::c_int = 0x2091 as libc::c_int;
@@ -957,16 +948,6 @@ pub unsafe extern "C" fn _sapp_x11_release_error_handler() {
 }
 
 pub const GLX_VENDOR: libc::c_int = 1 as libc::c_int;
-
-
-thread_local! {
-    pub static _sapp_x11_screen: RefCell<libc::c_int> = RefCell::new(0);
-    pub static _sapp_glx_GetFBConfigs: RefCell<PFNGLXGETFBCONFIGSPROC> = RefCell::new(None);
-    pub static _sapp_glx_GetClientString: RefCell<PFNGLXGETCLIENTSTRINGPROC> = RefCell::new(None);
-    pub static _sapp_glx_CreateWindow: RefCell<PFNGLXCREATEWINDOWPROC> = RefCell::new(None);
-    pub static _sapp_glx_ARB_multisample: RefCell<bool> = RefCell::new(false);
-    pub static _sapp_glx_GetFBConfigAttrib: RefCell<PFNGLXGETFBCONFIGATTRIBPROC> = RefCell::new(None);
-}
 
 pub const GLX_RENDER_TYPE: libc::c_int = 0x8011 as libc::c_int;
 pub const GLX_RGBA_BIT: libc::c_int = 0x1 as libc::c_int;
@@ -2503,9 +2484,6 @@ pub fn set_val<F>(a: &'static std::thread::LocalKey<RefCell<F>>, b: F) {
     a.with(|val| *val.borrow_mut() = b);
 }
 
-//pub static mut _sapp_x11_window_state: libc::c_int = 0;
-
-
 pub unsafe extern "C" fn _sapp_x11_get_window_property(
     mut property: Atom,
     mut type_: Atom,
@@ -2848,7 +2826,6 @@ pub unsafe extern "C" fn _sapp_x11_destroy_window() {
 thread_local! {
     pub static _sapp_x11_display: RefCell<*mut Display> = RefCell::new(0 as *const Display as *mut Display);
 }
-//pub static mut _sapp_x11_display: *mut Display = 0 as *const Display as *mut Display;
 
 #[no_mangle]
 pub unsafe extern "C" fn sapp_run(mut desc: *const sapp_desc) {
@@ -3177,90 +3154,6 @@ thread_local! {
     });
 }
 
-/* 
-pub static mut _sapp: _sapp_state = _sapp_state {
-    valid: false,
-    window_width: 0,
-    window_height: 0,
-    framebuffer_width: 0,
-    framebuffer_height: 0,
-    sample_count: 0,
-    swap_interval: 0,
-    dpi_scale: 0.,
-    gles2_fallback: false,
-    first_frame: false,
-    init_called: false,
-    cleanup_called: false,
-    quit_requested: false,
-    quit_ordered: false,
-    html5_canvas_name: 0 as *const libc::c_char,
-    html5_ask_leave_site: false,
-    window_title: [0; 128],
-    window_title_wide: [0; 128],
-    frame_count: 0,
-    mouse_x: 0.,
-    mouse_y: 0.,
-    win32_mouse_tracked: false,
-    onscreen_keyboard_shown: false,
-    event: sapp_event {
-        frame_count: 0,
-        type_: sapp_event_type_SAPP_EVENTTYPE_INVALID,
-        key_code: sapp_keycode_SAPP_KEYCODE_INVALID,
-        char_code: 0,
-        key_repeat: false,
-        modifiers: 0,
-        mouse_button: sapp_mousebutton_SAPP_MOUSEBUTTON_LEFT,
-        mouse_x: 0.,
-        mouse_y: 0.,
-        mouse_dx: 0.,
-        mouse_dy: 0.,
-        scroll_x: 0.,
-        scroll_y: 0.,
-        num_touches: 0,
-        touches: [sapp_touchpoint {
-            identifier: 0,
-            pos_x: 0.,
-            pos_y: 0.,
-            changed: false,
-        }; 8],
-        window_width: 0,
-        window_height: 0,
-        framebuffer_width: 0,
-        framebuffer_height: 0,
-    },
-    desc: sapp_desc {
-        init_cb: None,
-        frame_cb: None,
-        cleanup_cb: None,
-        event_cb: None,
-        fail_cb: None,
-        user_data: 0 as *const libc::c_void as *mut libc::c_void,
-        init_userdata_cb: None,
-        frame_userdata_cb: None,
-        cleanup_userdata_cb: None,
-        event_userdata_cb: None,
-        fail_userdata_cb: None,
-        width: 0,
-        height: 0,
-        window_resizable: false,
-        sample_count: 0,
-        swap_interval: 0,
-        high_dpi: false,
-        fullscreen: false,
-        alpha: false,
-        window_title: 0 as *const libc::c_char,
-        user_cursor: false,
-        html5_canvas_name: 0 as *const libc::c_char,
-        html5_canvas_resize: false,
-        html5_preserve_drawing_buffer: false,
-        html5_premultiplied_alpha: false,
-        html5_ask_leave_site: false,
-        ios_keyboard_resizes_canvas: false,
-        gl_force_gles2: false,
-    },
-    keycodes: [sapp_keycode_SAPP_KEYCODE_INVALID; 512],
-};
-*/
 #[no_mangle]
 pub unsafe extern "C" fn sapp_isvalid() -> bool {
     return get_val(&_sapp).valid;
