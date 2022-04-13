@@ -404,7 +404,7 @@ pub type PFNGLXCREATENEWCONTEXTPROC = Option<
 >;
 
 pub unsafe extern "C" fn _sapp_x11_create_window(mut visual: *mut Visual, mut depth: libc::c_int) {
-    _sapp_x11_colormap = XCreateColormap(get_val(&_sapp_x11_display), get_val(&_sapp_x11_root), visual, AllocNone);
+    set_val(&_sapp_x11_colormap, XCreateColormap(get_val(&_sapp_x11_display), get_val(&_sapp_x11_root), visual, AllocNone));
     let mut wa = XSetWindowAttributes {
         background_pixmap: 0,
         background_pixel: 0,
@@ -428,7 +428,7 @@ pub unsafe extern "C" fn _sapp_x11_create_window(mut visual: *mut Visual, mut de
         ::std::mem::size_of::<XSetWindowAttributes>() as libc::c_ulong,
     );
     let wamask = (CWBorderPixel | CWColormap | CWEventMask) as u32;
-    wa.colormap = _sapp_x11_colormap;
+    wa.colormap = get_val(&_sapp_x11_colormap);
     wa.border_pixel = 0 as libc::c_int as libc::c_ulong;
     wa.event_mask = StructureNotifyMask
         | KeyPressMask
@@ -2757,16 +2757,21 @@ pub unsafe extern "C" fn _sapp_glx_destroy_context() {
     };
 }
 pub static mut _sapp_x11_window: Window = 0;
-pub static mut _sapp_x11_colormap: Colormap = 0;
+
+thread_local! {
+    pub static _sapp_x11_colormap: RefCell<Colormap> = RefCell::new(0);
+}
+
+
 pub unsafe extern "C" fn _sapp_x11_destroy_window() {
     if _sapp_x11_window != 0 {
         XUnmapWindow(get_val(&_sapp_x11_display), _sapp_x11_window);
         XDestroyWindow(get_val(&_sapp_x11_display), _sapp_x11_window);
         _sapp_x11_window = 0 as libc::c_int as Window
     }
-    if _sapp_x11_colormap != 0 {
-        XFreeColormap(get_val(&_sapp_x11_display), _sapp_x11_colormap);
-        _sapp_x11_colormap = 0 as libc::c_int as Colormap
+    if get_val(&_sapp_x11_colormap) != 0 {
+        XFreeColormap(get_val(&_sapp_x11_display), get_val(&_sapp_x11_colormap));
+        set_val(&_sapp_x11_colormap, 0 as libc::c_int as Colormap)
     }
     XFlush(get_val(&_sapp_x11_display));
 }
