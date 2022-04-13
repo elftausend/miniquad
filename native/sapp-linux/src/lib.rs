@@ -2284,7 +2284,12 @@ pub unsafe extern "C" fn _sapp_x11_keysym_to_unicode(mut keysym: KeySym) -> i32 
     }
     return -(1 as libc::c_int);
 }
-pub static mut _sapp_x11_keycodes: [bool; 256] = [false; 256];
+
+thread_local! {
+    pub static _sapp_x11_keycodes: RefCell<[bool; 256]> = RefCell::new([false; 256]);
+}
+
+
 pub unsafe extern "C" fn _sapp_x11_key_event(
     mut type_: sapp_event_type,
     mut key: sapp_keycode,
@@ -2562,8 +2567,8 @@ pub unsafe extern "C" fn _sapp_x11_process_event(mut event: *mut XEvent) {
         2 => {
             let mut keycode = (*event).xkey.keycode as libc::c_int;
             let key = _sapp_x11_translate_key(keycode);
-            let mut repeat = _sapp_x11_keycodes[(keycode & 0xff as libc::c_int) as usize];
-            _sapp_x11_keycodes[(keycode & 0xff as libc::c_int) as usize] = true;
+            let mut repeat = get_val(&_sapp_x11_keycodes)[(keycode & 0xff as libc::c_int) as usize];
+            get_val_mut(&_sapp_x11_keycodes)[(keycode & 0xff as libc::c_int) as usize] = true;
             let mods = _sapp_x11_mod((*event).xkey.state as libc::c_int);
             if key as libc::c_uint
                 != sapp_keycode_SAPP_KEYCODE_INVALID as libc::c_int as libc::c_uint
@@ -2586,7 +2591,7 @@ pub unsafe extern "C" fn _sapp_x11_process_event(mut event: *mut XEvent) {
         3 => {
             let mut keycode_0 = (*event).xkey.keycode as libc::c_int;
             let key_0 = _sapp_x11_translate_key(keycode_0);
-            _sapp_x11_keycodes[(keycode_0 & 0xff as libc::c_int) as usize] = false;
+            get_val_mut(&_sapp_x11_keycodes)[(keycode_0 & 0xff as libc::c_int) as usize] = false;
             if key_0 as libc::c_uint
                 != sapp_keycode_SAPP_KEYCODE_INVALID as libc::c_int as libc::c_uint
             {
