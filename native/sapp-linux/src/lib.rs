@@ -964,9 +964,10 @@ thread_local! {
     pub static _sapp_glx_GetFBConfigs: RefCell<PFNGLXGETFBCONFIGSPROC> = RefCell::new(None);
     pub static _sapp_glx_GetClientString: RefCell<PFNGLXGETCLIENTSTRINGPROC> = RefCell::new(None);
     pub static _sapp_glx_CreateWindow: RefCell<PFNGLXCREATEWINDOWPROC> = RefCell::new(None);
+    pub static _sapp_glx_ARB_multisample: RefCell<bool> = RefCell::new(false);
+    pub static _sapp_glx_GetFBConfigAttrib: RefCell<PFNGLXGETFBCONFIGATTRIBPROC> = RefCell::new(None);
 }
 
-//pub static mut _sapp_x11_screen: libc::c_int = 0;
 pub const GLX_RENDER_TYPE: libc::c_int = 0x8011 as libc::c_int;
 pub const GLX_RGBA_BIT: libc::c_int = 0x1 as libc::c_int;
 pub const GLX_DRAWABLE_TYPE: libc::c_int = 0x8010 as libc::c_int;
@@ -978,12 +979,6 @@ pub const GLX_ALPHA_SIZE: libc::c_int = 11 as libc::c_int;
 pub const GLX_DEPTH_SIZE: libc::c_int = 12 as libc::c_int;
 pub const GLX_STENCIL_SIZE: libc::c_int = 13 as libc::c_int;
 pub const GLX_DOUBLEBUFFER: libc::c_int = 5 as libc::c_int;
-
-thread_local! {
-    pub static _sapp_glx_ARB_multisample: RefCell<bool> = RefCell::new(false);
-    pub static _sapp_glx_GetFBConfigAttrib: RefCell<PFNGLXGETFBCONFIGATTRIBPROC> = RefCell::new(None);
-}
-
 
 
 pub unsafe extern "C" fn _sapp_glx_attrib(
@@ -1424,7 +1419,7 @@ pub unsafe extern "C" fn _sapp_x11_raw_device_event(dx: f32, dy: f32) {
     };
 }
 
-pub static mut _sapp_x11_keysymtab: [_sapp_x11_codepair; 828] = [
+pub static _sapp_x11_keysymtab: [_sapp_x11_codepair; 828] = [
     _sapp_x11_codepair::new(0x01a1, 0x0104),
     _sapp_x11_codepair::new(0x01a2, 0x02d8),
     _sapp_x11_codepair::new(0x01a3, 0x0141),
