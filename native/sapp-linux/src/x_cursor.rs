@@ -70,7 +70,7 @@ pub unsafe fn create_empty_cursor() -> Cursor {
     let mut cursor_color_data: [libc::c_char; 1] = [0 as libc::c_int as libc::c_char];
     let mut cursor_pixmap = XCreateBitmapFromData(
         get_val(&_sapp_x11_display),
-        _sapp_x11_window,
+        get_val(&_sapp_x11_window),
         cursor_color_data.as_mut_ptr(),
         1 as libc::c_int as libc::c_uint,
         1 as libc::c_int as libc::c_uint,
@@ -94,5 +94,5 @@ pub unsafe fn load_cursor(shape: libc::c_ushort) -> Cursor {
 }
 
 pub unsafe fn set_cursor(cursor: Cursor) {
-    XDefineCursor(get_val(&_sapp_x11_display), _sapp_x11_window, cursor);
+    XDefineCursor(get_val(&_sapp_x11_display), get_val(&_sapp_x11_window), cursor);
 }

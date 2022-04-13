@@ -30,7 +30,7 @@ pub unsafe fn get_clipboard(
     mut bufname: *const libc::c_char,
     mut fmtname: *const libc::c_char,
 ) -> Option<String> {
-    assert!(get_val(&_sapp_x11_display) as usize != 0 && _sapp_x11_window != 0);
+    assert!(get_val(&_sapp_x11_display) as usize != 0 && get_val(&_sapp_x11_window) != 0);
 
     let mut result = 0 as *mut libc::c_char;
     let mut ressize: libc::c_ulong = 0;
@@ -59,7 +59,7 @@ pub unsafe fn get_clipboard(
         bufid,
         fmtid,
         propid,
-        _sapp_x11_window,
+        get_val(&_sapp_x11_window),
         CurrentTime as Time,
     );
 
@@ -84,7 +84,7 @@ pub unsafe fn get_clipboard(
         loop {
             XGetWindowProperty(
                 get_val(&_sapp_x11_display),
-                _sapp_x11_window,
+                get_val(&_sapp_x11_window),
                 propid,
                 offset,
                 read_size,
@@ -123,7 +123,7 @@ static mut MESSAGE: Option<String> = None;
 /// Claim that our app is X11 clipboard owner
 /// Now when some other linux app will ask X11 for clipboard content - it will be redirected to our app
 pub unsafe fn claim_clipboard_ownership(mut bufname: *const libc::c_char, message: String) {
-    assert!(get_val(&_sapp_x11_display) as usize != 0 && _sapp_x11_window != 0);
+    assert!(get_val(&_sapp_x11_display) as usize != 0 && get_val(&_sapp_x11_window) != 0);
 
     let mut selection = XInternAtom(
         get_val(&_sapp_x11_display),
@@ -134,7 +134,7 @@ pub unsafe fn claim_clipboard_ownership(mut bufname: *const libc::c_char, messag
     XSetSelectionOwner(
         get_val(&_sapp_x11_display),
         selection,
-        _sapp_x11_window,
+        get_val(&_sapp_x11_window),
         0 as libc::c_int as Time,
     );
 
