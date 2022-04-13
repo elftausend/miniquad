@@ -404,7 +404,7 @@ pub type PFNGLXCREATENEWCONTEXTPROC = Option<
 >;
 
 pub unsafe extern "C" fn _sapp_x11_create_window(mut visual: *mut Visual, mut depth: libc::c_int) {
-    _sapp_x11_colormap = XCreateColormap(get_val(&_sapp_x11_display), _sapp_x11_root, visual, AllocNone);
+    _sapp_x11_colormap = XCreateColormap(get_val(&_sapp_x11_display), get_val(&_sapp_x11_root), visual, AllocNone);
     let mut wa = XSetWindowAttributes {
         background_pixmap: 0,
         background_pixel: 0,
@@ -446,7 +446,7 @@ pub unsafe extern "C" fn _sapp_x11_create_window(mut visual: *mut Visual, mut de
 
     _sapp_x11_window = XCreateWindow(
         get_val(&_sapp_x11_display),
-        _sapp_x11_root,
+        get_val(&_sapp_x11_root),
         0 as libc::c_int,
         0 as libc::c_int,
         _sapp.window_width as libc::c_uint,
@@ -770,7 +770,7 @@ pub unsafe extern "C" fn _sapp_glx_init() {
     }
     let mut exts = _sapp_glx_QueryExtensionsString.expect("non-null function pointer")(
         get_val(&_sapp_x11_display),
-        _sapp_x11_screen,
+        get_val(&_sapp_x11_screen),
     );
     if _sapp_glx_extsupported(b"GLX_EXT_swap_control\x00", exts) {
         _sapp_glx_SwapIntervalEXT =
@@ -812,7 +812,13 @@ pub unsafe extern "C" fn _sapp_glx_choose_visual(
     *depth = (*result).depth;
     XFree(result as *mut libc::c_void);
 }
-pub static mut _sapp_x11_root: Window = 0;
+
+thread_local! {
+    pub static _sapp_x11_root: RefCell<Window> = RefCell::new(0);
+}
+//pub static mut _sapp_x11_root: Window = 0;
+
+
 pub static mut _sapp_x11_NET_WM_NAME: Atom = 0;
 pub static mut _sapp_x11_NET_WM_ICON_NAME: Atom = 0;
 pub static mut _sapp_x11_UTF8_STRING: Atom = 0;
@@ -914,7 +920,12 @@ pub static mut _sapp_glx_CreateWindow: PFNGLXCREATEWINDOWPROC = None;
 pub static mut _sapp_glx_GetClientString: PFNGLXGETCLIENTSTRINGPROC = None;
 pub const GLX_VENDOR: libc::c_int = 1 as libc::c_int;
 pub static mut _sapp_glx_GetFBConfigs: PFNGLXGETFBCONFIGSPROC = None;
-pub static mut _sapp_x11_screen: libc::c_int = 0;
+
+thread_local! {
+    pub static _sapp_x11_screen: RefCell<libc::c_int> = RefCell::new(0);
+}
+
+//pub static mut _sapp_x11_screen: libc::c_int = 0;
 pub const GLX_RENDER_TYPE: libc::c_int = 0x8011 as libc::c_int;
 pub const GLX_RGBA_BIT: libc::c_int = 0x1 as libc::c_int;
 pub const GLX_DRAWABLE_TYPE: libc::c_int = 0x8010 as libc::c_int;
@@ -1070,7 +1081,7 @@ pub unsafe extern "C" fn _sapp_glx_choosefbconfig() -> GLXFBConfig {
     }
     native_configs = _sapp_glx_GetFBConfigs.expect("non-null function pointer")(
         get_val(&_sapp_x11_display),
-        _sapp_x11_screen,
+        get_val(&_sapp_x11_screen),
         &mut native_count,
     );
     if native_configs.is_null() || native_count == 0 {
@@ -1278,7 +1289,7 @@ unsafe fn _sapp_x11_set_fullscreen() {
         };
         XSendEvent(
             get_val(&_sapp_x11_display),
-            _sapp_x11_root,
+            get_val(&_sapp_x11_root),
             false as _,
             (1048576 | 131072) as _,
             &mut ev as *mut XClientMessageEvent as *mut XEvent,
@@ -1310,7 +1321,7 @@ unsafe fn _sapp_x11_send_event(t: Atom, a: isize, b: isize, c: isize, d: isize, 
 
     XSendEvent(
         get_val(&_sapp_x11_display),
-        _sapp_x11_root,
+        get_val(&_sapp_x11_root),
         false as _,
         (1048576 | 131072) as _,
         &mut ev as *mut XClientMessageEvent as *mut XEvent,
@@ -2765,11 +2776,11 @@ pub unsafe extern "C" fn sapp_run(mut desc: *const sapp_desc) {
     if get_val(&_sapp_x11_display).is_null() {
         _sapp_fail("XOpenDisplay() failed!");
     }
-    _sapp_x11_screen = (*(get_val(&_sapp_x11_display) as _XPrivDisplay)).default_screen;
-    _sapp_x11_root = (*(*(get_val(&_sapp_x11_display) as _XPrivDisplay))
+    set_val(&_sapp_x11_screen, (*(get_val(&_sapp_x11_display) as _XPrivDisplay)).default_screen);
+    set_val(&_sapp_x11_root, (*(*(get_val(&_sapp_x11_display) as _XPrivDisplay))
         .screens
         .offset((*(get_val(&_sapp_x11_display) as _XPrivDisplay)).default_screen as isize))
-    .root;
+    .root);
     XkbSetDetectableAutoRepeat(get_val(&_sapp_x11_display), true as _, std::ptr::null_mut());
 
     // because X11 Xft.dpi may be not presented on the linux system at all
