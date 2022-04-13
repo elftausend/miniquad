@@ -2,7 +2,7 @@
 //! Clipboard API on X11 is pretty weird https://www.uninformativ.de/blog/postings/2017-04-02/0/POSTING-en.html
 //! so use this with caution.
 
-use crate::x::*;
+use crate::{x::*, get_val};
 
 use crate::{_sapp_x11_display, _sapp_x11_window};
 
@@ -30,21 +30,21 @@ pub unsafe fn get_clipboard(
     mut bufname: *const libc::c_char,
     mut fmtname: *const libc::c_char,
 ) -> Option<String> {
-    assert!(_sapp_x11_display as usize != 0 && _sapp_x11_window != 0);
+    assert!(get_val(&_sapp_x11_display) as usize != 0 && _sapp_x11_window != 0);
 
     let mut result = 0 as *mut libc::c_char;
     let mut ressize: libc::c_ulong = 0;
     let mut restail: libc::c_ulong = 0;
     let mut resbits: libc::c_int = 0;
-    let mut bufid = XInternAtom(_sapp_x11_display, bufname, false as _);
-    let mut fmtid = XInternAtom(_sapp_x11_display, fmtname, false as _);
+    let mut bufid = XInternAtom(get_val(&_sapp_x11_display), bufname, false as _);
+    let mut fmtid = XInternAtom(get_val(&_sapp_x11_display), fmtname, false as _);
     let mut propid = XInternAtom(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         b"XSEL_DATA\x00" as *const u8 as *const libc::c_char,
         false as _,
     );
     let mut incrid = XInternAtom(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         b"INCR\x00" as *const u8 as *const libc::c_char,
         false as _,
     );
@@ -55,7 +55,7 @@ pub unsafe fn get_clipboard(
     // we will wait for appropriate event forever
     // but OK lets believe that all other linux apps will gracefully send us nice utf-8 strings
     XConvertSelection(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         bufid,
         fmtid,
         propid,
@@ -69,7 +69,7 @@ pub unsafe fn get_clipboard(
     // In case that our app already is clipboard owner - we need to handle SelectionNotify for data response
     // and SelectionRequest - to handle this request we just did couple of lines above
     loop {
-        XNextEvent(_sapp_x11_display, &mut event);
+        XNextEvent(get_val(&_sapp_x11_display), &mut event);
         if !(event.type_0 != SelectionNotify || event.xselection.selection != bufid) {
             break;
         }
@@ -83,7 +83,7 @@ pub unsafe fn get_clipboard(
         let mut offset: libc::c_long = 0 as libc::c_long;
         loop {
             XGetWindowProperty(
-                _sapp_x11_display,
+                get_val(&_sapp_x11_display),
                 _sapp_x11_window,
                 propid,
                 offset,
@@ -123,16 +123,16 @@ static mut MESSAGE: Option<String> = None;
 /// Claim that our app is X11 clipboard owner
 /// Now when some other linux app will ask X11 for clipboard content - it will be redirected to our app
 pub unsafe fn claim_clipboard_ownership(mut bufname: *const libc::c_char, message: String) {
-    assert!(_sapp_x11_display as usize != 0 && _sapp_x11_window != 0);
+    assert!(get_val(&_sapp_x11_display) as usize != 0 && _sapp_x11_window != 0);
 
     let mut selection = XInternAtom(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         bufname as *const u8 as *const libc::c_char,
         0 as libc::c_int,
     );
 
     XSetSelectionOwner(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         selection,
         _sapp_x11_window,
         0 as libc::c_int as Time,
@@ -151,7 +151,7 @@ pub(crate) unsafe fn respond_to_clipboard_request(event: *const XEvent) {
     let message = MESSAGE.as_ref().unwrap_or(&empty_message);
 
     let UTF8 = XInternAtom(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         b"UTF8_STRING\x00" as *const u8 as *const libc::c_char,
         1 as libc::c_int,
     );
@@ -182,7 +182,7 @@ pub(crate) unsafe fn respond_to_clipboard_request(event: *const XEvent) {
         );
 
         XSendEvent(
-            _sapp_x11_display,
+            get_val(&_sapp_x11_display),
             ev.requestor,
             0 as libc::c_int,
             0 as libc::c_int as libc::c_long,
@@ -193,7 +193,7 @@ pub(crate) unsafe fn respond_to_clipboard_request(event: *const XEvent) {
         ev.property = 0 as Atom;
 
         XSendEvent(
-            _sapp_x11_display,
+            get_val(&_sapp_x11_display),
             ev.requestor,
             0 as libc::c_int,
             0 as libc::c_int as libc::c_long,

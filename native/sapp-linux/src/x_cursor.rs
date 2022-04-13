@@ -1,5 +1,5 @@
 use crate::x::{Display, Window};
-use crate::{_sapp_x11_display, _sapp_x11_window};
+use crate::{_sapp_x11_display, _sapp_x11_window, get_val};
 
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -69,14 +69,14 @@ pub unsafe fn create_empty_cursor() -> Cursor {
 
     let mut cursor_color_data: [libc::c_char; 1] = [0 as libc::c_int as libc::c_char];
     let mut cursor_pixmap = XCreateBitmapFromData(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         _sapp_x11_window,
         cursor_color_data.as_mut_ptr(),
         1 as libc::c_int as libc::c_uint,
         1 as libc::c_int as libc::c_uint,
     );
     let mut empty_cursor = XCreatePixmapCursor(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         cursor_pixmap,
         cursor_pixmap,
         &mut cursor_color,
@@ -84,15 +84,15 @@ pub unsafe fn create_empty_cursor() -> Cursor {
         0 as libc::c_int as libc::c_uint,
         0 as libc::c_int as libc::c_uint,
     );
-    XFreePixmap(_sapp_x11_display, cursor_pixmap);
+    XFreePixmap(get_val(&_sapp_x11_display), cursor_pixmap);
 
     empty_cursor
 }
 
 pub unsafe fn load_cursor(shape: libc::c_ushort) -> Cursor {
-    XCreateFontCursor(_sapp_x11_display, shape)
+    XCreateFontCursor(get_val(&_sapp_x11_display), shape)
 }
 
 pub unsafe fn set_cursor(cursor: Cursor) {
-    XDefineCursor(_sapp_x11_display, _sapp_x11_window, cursor);
+    XDefineCursor(get_val(&_sapp_x11_display), _sapp_x11_window, cursor);
 }

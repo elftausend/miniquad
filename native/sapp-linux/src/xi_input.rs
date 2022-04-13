@@ -1,4 +1,4 @@
-use crate::_sapp_x11_display;
+use crate::{_sapp_x11_display, get_val};
 
 use crate::x::{Display, Window, _XPrivDisplay};
 
@@ -80,7 +80,7 @@ pub unsafe fn query_xi_extension() -> Option<i32> {
     let mut xi_opcode = 0;
 
     if XQueryExtension(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         b"XInputExtension\x00" as *const u8 as *const libc::c_char,
         &mut xi_opcode,
         &mut ev,
@@ -94,7 +94,7 @@ pub unsafe fn query_xi_extension() -> Option<i32> {
     let mut rc = 0;
     let mut major = 2;
     let mut minor = 3;
-    if XIQueryVersion(_sapp_x11_display, &mut major, &mut minor) != 0 {
+    if XIQueryVersion(get_val(&_sapp_x11_display), &mut major, &mut minor) != 0 {
         return None;
     }
 
@@ -106,11 +106,11 @@ pub unsafe fn query_xi_extension() -> Option<i32> {
         mask: &mut mask as *mut _ as *mut _,
     };
     XISelectEvents(
-        _sapp_x11_display,
-        // this weird pointers is macro expansion of DefaultRootWindow(_sapp_x11_display)
-        (*(*(_sapp_x11_display as _XPrivDisplay))
+        get_val(&_sapp_x11_display),
+        // this weird pointers is macro expansion of DefaultRootWindow(get_val(&_sapp_x11_display))
+        (*(*(get_val(&_sapp_x11_display) as _XPrivDisplay))
             .screens
-            .offset((*(_sapp_x11_display as _XPrivDisplay)).default_screen as isize))
+            .offset((*(get_val(&_sapp_x11_display) as _XPrivDisplay)).default_screen as isize))
         .root,
         &mut masks,
         1 as libc::c_int,
@@ -122,14 +122,14 @@ pub unsafe fn query_xi_extension() -> Option<i32> {
 pub unsafe fn read_cookie(xcookie: &mut crate::x::Xlib_h::XGenericEventCookie) -> (f64, f64) {
     assert!(xcookie.evtype == crate::xi_input::XI_RawMotion);
 
-    crate::xi_input::XGetEventData(_sapp_x11_display, xcookie);
+    crate::xi_input::XGetEventData(get_val(&_sapp_x11_display), xcookie);
 
     let raw_event = (*xcookie).data as *mut crate::xi_input::XIRawEvent;
 
     let dx = *(*raw_event).raw_values;
     let dy = *(*raw_event).raw_values.offset(1);
 
-    crate::xi_input::XFreeEventData(_sapp_x11_display, &mut (*xcookie) as *mut _);
+    crate::xi_input::XFreeEventData(get_val(&_sapp_x11_display), &mut (*xcookie) as *mut _);
 
     (dx, dy)
 }

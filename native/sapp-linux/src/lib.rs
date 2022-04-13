@@ -20,6 +20,8 @@ mod xi_input;
 
 pub mod clipboard;
 
+use std::cell::RefCell;
+
 pub use gl::*;
 pub use rand::*;
 
@@ -402,7 +404,7 @@ pub type PFNGLXCREATENEWCONTEXTPROC = Option<
 >;
 
 pub unsafe extern "C" fn _sapp_x11_create_window(mut visual: *mut Visual, mut depth: libc::c_int) {
-    _sapp_x11_colormap = XCreateColormap(_sapp_x11_display, _sapp_x11_root, visual, AllocNone);
+    _sapp_x11_colormap = XCreateColormap(get_val(&_sapp_x11_display), _sapp_x11_root, visual, AllocNone);
     let mut wa = XSetWindowAttributes {
         background_pixmap: 0,
         background_pixel: 0,
@@ -443,7 +445,7 @@ pub unsafe extern "C" fn _sapp_x11_create_window(mut visual: *mut Visual, mut de
     _sapp_x11_grab_error_handler();
 
     _sapp_x11_window = XCreateWindow(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         _sapp_x11_root,
         0 as libc::c_int,
         0 as libc::c_int,
@@ -468,7 +470,7 @@ pub unsafe extern "C" fn _sapp_x11_create_window(mut visual: *mut Visual, mut de
 
     let mut protocols: [Atom; 1] = [_sapp_x11_WM_DELETE_WINDOW];
     XSetWMProtocols(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         _sapp_x11_window,
         protocols.as_mut_ptr(),
         1 as libc::c_int,
@@ -483,7 +485,7 @@ pub unsafe extern "C" fn _sapp_x11_create_window(mut visual: *mut Visual, mut de
         (*hints).max_height = _sapp.desc.height;
     }
     (*hints).win_gravity = StaticGravity;
-    XSetWMNormalHints(_sapp_x11_display, _sapp_x11_window, hints);
+    XSetWMNormalHints(get_val(&_sapp_x11_display), _sapp_x11_window, hints);
     XFree(hints as *mut libc::c_void);
     _sapp_x11_update_window_title();
     _sapp_x11_query_window_size();
@@ -568,7 +570,7 @@ pub unsafe extern "C" fn _sapp_init_state(mut desc: *const sapp_desc) {
     _sapp.dpi_scale = 1.0f32;
 }
 pub unsafe extern "C" fn _sapp_x11_query_system_dpi() {
-    let mut rms = XResourceManagerString(_sapp_x11_display);
+    let mut rms = XResourceManagerString(get_val(&_sapp_x11_display));
     if !rms.is_null() {
         let mut db = XrmGetStringDatabase(rms);
         if !db.is_null() {
@@ -599,32 +601,32 @@ pub unsafe extern "C" fn _sapp_x11_query_system_dpi() {
 pub static mut _sapp_x11_dpi: libc::c_float = 0.;
 pub unsafe extern "C" fn _sapp_x11_init_extensions() {
     _sapp_x11_UTF8_STRING = XInternAtom(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         b"UTF8_STRING\x00" as *const u8 as *const libc::c_char,
         false as _,
     );
     _sapp_x11_WM_PROTOCOLS = XInternAtom(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         b"WM_PROTOCOLS\x00" as *const u8 as *const libc::c_char,
         false as _,
     );
     _sapp_x11_WM_DELETE_WINDOW = XInternAtom(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         b"WM_DELETE_WINDOW\x00" as *const u8 as *const libc::c_char,
         false as _,
     );
     _sapp_x11_WM_STATE = XInternAtom(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         b"WM_STATE\x00" as *const u8 as *const libc::c_char,
         false as _,
     );
     _sapp_x11_NET_WM_NAME = XInternAtom(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         b"_NET_WM_NAME\x00" as *const u8 as *const libc::c_char,
         false as _,
     );
     _sapp_x11_NET_WM_ICON_NAME = XInternAtom(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         b"_NET_WM_ICON_NAME\x00" as *const u8 as *const libc::c_char,
         false as _,
     );
@@ -748,7 +750,7 @@ pub unsafe extern "C" fn _sapp_glx_init() {
         _sapp_fail("GLX: failed to load required entry points");
     }
     if _sapp_glx_QueryExtension.expect("non-null function pointer")(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         &mut _sapp_glx_errorbase,
         &mut _sapp_glx_eventbase,
     ) == 0
@@ -756,7 +758,7 @@ pub unsafe extern "C" fn _sapp_glx_init() {
         _sapp_fail("GLX: GLX extension not found");
     }
     if _sapp_glx_QueryVersion.expect("non-null function pointer")(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         &mut _sapp_glx_major,
         &mut _sapp_glx_minor,
     ) == 0
@@ -767,7 +769,7 @@ pub unsafe extern "C" fn _sapp_glx_init() {
         _sapp_fail("GLX: GLX version 1.3 is required");
     }
     let mut exts = _sapp_glx_QueryExtensionsString.expect("non-null function pointer")(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         _sapp_x11_screen,
     );
     if _sapp_glx_extsupported(b"GLX_EXT_swap_control\x00", exts) {
@@ -800,7 +802,7 @@ pub unsafe extern "C" fn _sapp_glx_choose_visual(
         _sapp_fail("GLX: Failed to find a suitable GLXFBConfig");
     }
     let mut result = _sapp_glx_GetVisualFromFBConfig.expect("non-null function pointer")(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         native,
     );
     if result.is_null() {
@@ -816,7 +818,7 @@ pub static mut _sapp_x11_NET_WM_ICON_NAME: Atom = 0;
 pub static mut _sapp_x11_UTF8_STRING: Atom = 0;
 pub unsafe extern "C" fn _sapp_x11_update_window_title() {
     Xutf8SetWMProperties(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         _sapp_x11_window,
         _sapp.window_title.as_mut_ptr(),
         _sapp.window_title.as_mut_ptr(),
@@ -827,7 +829,7 @@ pub unsafe extern "C" fn _sapp_x11_update_window_title() {
         std::ptr::null_mut(),
     );
     XChangeProperty(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         _sapp_x11_window,
         _sapp_x11_NET_WM_NAME,
         _sapp_x11_UTF8_STRING,
@@ -837,7 +839,7 @@ pub unsafe extern "C" fn _sapp_x11_update_window_title() {
         strlen(_sapp.window_title.as_mut_ptr()) as libc::c_int,
     );
     XChangeProperty(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         _sapp_x11_window,
         _sapp_x11_NET_WM_ICON_NAME,
         _sapp_x11_UTF8_STRING,
@@ -846,7 +848,7 @@ pub unsafe extern "C" fn _sapp_x11_update_window_title() {
         _sapp.window_title.as_mut_ptr() as *mut libc::c_uchar,
         strlen(_sapp.window_title.as_mut_ptr()) as libc::c_int,
     );
-    XFlush(_sapp_x11_display);
+    XFlush(get_val(&_sapp_x11_display));
 }
 pub unsafe extern "C" fn _sapp_x11_query_window_size() {
     let mut attribs = XWindowAttributes {
@@ -874,7 +876,7 @@ pub unsafe extern "C" fn _sapp_x11_query_window_size() {
         override_redirect: 0,
         screen: 0 as *mut Screen,
     };
-    XGetWindowAttributes(_sapp_x11_display, _sapp_x11_window, &mut attribs);
+    XGetWindowAttributes(get_val(&_sapp_x11_display), _sapp_x11_window, &mut attribs);
     _sapp.window_width = attribs.width;
     _sapp.window_height = attribs.height;
     _sapp.framebuffer_width = _sapp.window_width;
@@ -905,7 +907,7 @@ pub const GLX_CONTEXT_CORE_PROFILE_BIT_ARB: libc::c_int = 0x1 as libc::c_int;
 pub const GLX_CONTEXT_FLAGS_ARB: libc::c_int = 0x2094 as libc::c_int;
 pub const GLX_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB: libc::c_int = 0x2 as libc::c_int;
 pub unsafe extern "C" fn _sapp_x11_release_error_handler() {
-    XSync(_sapp_x11_display, false as _);
+    XSync(get_val(&_sapp_x11_display), false as _);
     XSetErrorHandler(None);
 }
 pub static mut _sapp_glx_CreateWindow: PFNGLXCREATEWINDOWPROC = None;
@@ -932,7 +934,7 @@ pub unsafe extern "C" fn _sapp_glx_attrib(
 ) -> libc::c_int {
     let mut value: libc::c_int = 0;
     _sapp_glx_GetFBConfigAttrib.expect("non-null function pointer")(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         fbconfig,
         attrib,
         &mut value,
@@ -1058,7 +1060,7 @@ pub unsafe extern "C" fn _sapp_glx_choosefbconfig() -> GLXFBConfig {
     let mut vendor = 0 as *const libc::c_char;
     let mut trust_window_bit = true;
     vendor = _sapp_glx_GetClientString.expect("non-null function pointer")(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         GLX_VENDOR,
     );
     if !vendor.is_null()
@@ -1067,7 +1069,7 @@ pub unsafe extern "C" fn _sapp_glx_choosefbconfig() -> GLXFBConfig {
         trust_window_bit = false
     }
     native_configs = _sapp_glx_GetFBConfigs.expect("non-null function pointer")(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         _sapp_x11_screen,
         &mut native_count,
     );
@@ -1159,7 +1161,7 @@ pub unsafe extern "C" fn _sapp_glx_create_context() {
         0,
     ];
     _sapp_glx_ctx = _sapp_glx_CreateContextAttribsARB.expect("non-null function pointer")(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         native,
         std::ptr::null_mut(),
         true as _,
@@ -1170,7 +1172,7 @@ pub unsafe extern "C" fn _sapp_glx_create_context() {
     }
     _sapp_x11_release_error_handler();
     _sapp_glx_window = _sapp_glx_CreateWindow.expect("non-null function pointer")(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         native,
         _sapp_x11_window,
         std::ptr::null(),
@@ -1205,26 +1207,26 @@ pub unsafe extern "C" fn _sapp_x11_window_visible() -> bool {
         override_redirect: 0,
         screen: 0 as *mut Screen,
     };
-    XGetWindowAttributes(_sapp_x11_display, _sapp_x11_window, &mut wa);
+    XGetWindowAttributes(get_val(&_sapp_x11_display), _sapp_x11_window, &mut wa);
     return wa.map_state == IsViewable;
 }
 pub unsafe extern "C" fn _sapp_x11_show_window() {
     if !_sapp_x11_window_visible() {
-        XMapWindow(_sapp_x11_display, _sapp_x11_window);
-        XRaiseWindow(_sapp_x11_display, _sapp_x11_window);
-        XFlush(_sapp_x11_display);
+        XMapWindow(get_val(&_sapp_x11_display), _sapp_x11_window);
+        XRaiseWindow(get_val(&_sapp_x11_display), _sapp_x11_window);
+        XFlush(get_val(&_sapp_x11_display));
     };
 }
 
 #[deprecated(note = "Should be removed")]
 unsafe fn _sapp_x11_set_fullscreen() {
     let mut wm_state = XInternAtom(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         b"_NET_WM_STATE\x00" as *const u8 as *const libc::c_char,
         false as _,
     );
     let wm_fullscreen = XInternAtom(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         b"_NET_WM_STATE_FULLSCREEN\x00" as *const u8 as *const libc::c_char,
         false as _,
     );
@@ -1233,13 +1235,13 @@ unsafe fn _sapp_x11_set_fullscreen() {
     // hide it, change _NET_WM_STATE_FULLSCREEN property and than show it back
     // someone on stackoverflow mentioned that this is not working on ubuntu/unity though
     {
-        XLowerWindow(_sapp_x11_display, _sapp_x11_window);
-        XUnmapWindow(_sapp_x11_display, _sapp_x11_window);
-        XSync(_sapp_x11_display, false as _);
+        XLowerWindow(get_val(&_sapp_x11_display), _sapp_x11_window);
+        XUnmapWindow(get_val(&_sapp_x11_display), _sapp_x11_window);
+        XSync(get_val(&_sapp_x11_display), false as _);
 
         let mut atoms: [Atom; 2] = [wm_fullscreen, 0 as _];
         XChangeProperty(
-            _sapp_x11_display,
+            get_val(&_sapp_x11_display),
             _sapp_x11_window,
             wm_state,
             4 as _,
@@ -1248,9 +1250,9 @@ unsafe fn _sapp_x11_set_fullscreen() {
             atoms.as_mut_ptr() as *mut _ as *mut _,
             1,
         );
-        XMapWindow(_sapp_x11_display, _sapp_x11_window);
-        XRaiseWindow(_sapp_x11_display, _sapp_x11_window);
-        XFlush(_sapp_x11_display);
+        XMapWindow(get_val(&_sapp_x11_display), _sapp_x11_window);
+        XRaiseWindow(get_val(&_sapp_x11_display), _sapp_x11_window);
+        XFlush(get_val(&_sapp_x11_display));
     }
 
     // however, this is X, so just in case - the second method
@@ -1268,14 +1270,14 @@ unsafe fn _sapp_x11_set_fullscreen() {
             send_event: true as _,
             message_type: wm_state,
             window: _sapp_x11_window,
-            display: _sapp_x11_display,
+            display: get_val(&_sapp_x11_display),
             format: 32,
             data: ClientMessageData {
                 l: std::mem::transmute(data),
             },
         };
         XSendEvent(
-            _sapp_x11_display,
+            get_val(&_sapp_x11_display),
             _sapp_x11_root,
             false as _,
             (1048576 | 131072) as _,
@@ -1299,7 +1301,7 @@ unsafe fn _sapp_x11_send_event(t: Atom, a: isize, b: isize, c: isize, d: isize, 
         send_event: true as _,
         message_type: t,
         window: _sapp_x11_window,
-        display: _sapp_x11_display,
+        display: get_val(&_sapp_x11_display),
         format: 32,
         data: ClientMessageData {
             l: std::mem::transmute(data),
@@ -1307,7 +1309,7 @@ unsafe fn _sapp_x11_send_event(t: Atom, a: isize, b: isize, c: isize, d: isize, 
     };
 
     XSendEvent(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         _sapp_x11_root,
         false as _,
         (1048576 | 131072) as _,
@@ -1323,7 +1325,7 @@ pub unsafe extern "C" fn _sapp_glx_swapinterval(mut interval: libc::c_int) {
     _sapp_glx_make_current();
     if _sapp_glx_EXT_swap_control {
         _sapp_glx_SwapIntervalEXT.expect("non-null function pointer")(
-            _sapp_x11_display,
+            get_val(&_sapp_x11_display),
             _sapp_glx_window,
             interval,
         );
@@ -1334,7 +1336,7 @@ pub unsafe extern "C" fn _sapp_glx_swapinterval(mut interval: libc::c_int) {
 pub static mut _sapp_glx_MakeCurrent: PFNGLXMAKECURRENTPROC = None;
 pub unsafe extern "C" fn _sapp_glx_make_current() {
     _sapp_glx_MakeCurrent.expect("non-null function pointer")(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         _sapp_glx_window,
         _sapp_glx_ctx,
     );
@@ -2236,7 +2238,7 @@ pub unsafe extern "C" fn _sapp_x11_key_event(
 pub unsafe extern "C" fn _sapp_x11_translate_key(mut scancode: libc::c_int) -> sapp_keycode {
     let mut dummy: libc::c_int = 0;
     let mut keysyms = XGetKeyboardMapping(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         scancode as KeyCode,
         1 as libc::c_int,
         &mut dummy,
@@ -2419,7 +2421,22 @@ pub unsafe extern "C" fn _sapp_x11_mod(mut x11_mods: libc::c_int) -> u32 {
     }
     return mods;
 }
-pub static mut _sapp_x11_window_state: libc::c_int = 0;
+thread_local! {
+    pub static _sapp_x11_window_state: RefCell<libc::c_int> = RefCell::new(0);
+}
+
+pub fn get_val<F: Copy>(a: &'static std::thread::LocalKey<RefCell<F>>) -> F {
+    let c = a.with(|val| val.as_ptr());
+    unsafe {*c}
+}
+
+pub fn set_val<F>(a: &'static std::thread::LocalKey<RefCell<F>>, b: F) {
+    a.with(|val| *val.borrow_mut() = b);
+}
+
+//pub static mut _sapp_x11_window_state: libc::c_int = 0;
+
+
 pub unsafe extern "C" fn _sapp_x11_get_window_property(
     mut property: Atom,
     mut type_: Atom,
@@ -2430,7 +2447,7 @@ pub unsafe extern "C" fn _sapp_x11_get_window_property(
     let mut itemCount: libc::c_ulong = 0;
     let mut bytesAfter: libc::c_ulong = 0;
     XGetWindowProperty(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         _sapp_x11_window,
         property,
         0,
@@ -2572,8 +2589,8 @@ pub unsafe extern "C" fn _sapp_x11_process_event(mut event: *mut XEvent) {
             if (*event).xproperty.state == PropertyNewValue {
                 if (*event).xproperty.atom == _sapp_x11_WM_STATE {
                     let state = _sapp_x11_get_window_state();
-                    if state != _sapp_x11_window_state {
-                        _sapp_x11_window_state = state;
+                    if state != get_val(&_sapp_x11_window_state) {
+                        set_val(&_sapp_x11_window_state, state);
                         if state == IconicState {
                             _sapp_x11_app_event(sapp_event_type_SAPP_EVENTTYPE_ICONIFIED);
                         } else if state == NormalState {
@@ -2645,7 +2662,7 @@ pub unsafe extern "C" fn _sapp_frame() {
 }
 pub static mut _sapp_glx_SwapBuffers: PFNGLXSWAPBUFFERSPROC = None;
 pub unsafe extern "C" fn _sapp_glx_swap_buffers() {
-    _sapp_glx_SwapBuffers.expect("non-null function pointer")(_sapp_x11_display, _sapp_glx_window);
+    _sapp_glx_SwapBuffers.expect("non-null function pointer")(get_val(&_sapp_x11_display), _sapp_glx_window);
 }
 pub unsafe extern "C" fn _sapp_events_enabled() -> bool {
     return (_sapp.desc.event_cb.is_some() || _sapp.desc.event_userdata_cb.is_some())
@@ -2703,14 +2720,14 @@ pub static mut _sapp_glx_ctx: GLXContext = 0 as *const __GLXcontext as *mut __GL
 pub unsafe extern "C" fn _sapp_glx_destroy_context() {
     if _sapp_glx_window != 0 {
         _sapp_glx_DestroyWindow.expect("non-null function pointer")(
-            _sapp_x11_display,
+            get_val(&_sapp_x11_display),
             _sapp_glx_window,
         );
         _sapp_glx_window = 0 as libc::c_int as GLXWindow
     }
     if !_sapp_glx_ctx.is_null() {
         _sapp_glx_DestroyContext.expect("non-null function pointer")(
-            _sapp_x11_display,
+            get_val(&_sapp_x11_display),
             _sapp_glx_ctx,
         );
         _sapp_glx_ctx = 0 as GLXContext
@@ -2720,34 +2737,40 @@ pub static mut _sapp_x11_window: Window = 0;
 pub static mut _sapp_x11_colormap: Colormap = 0;
 pub unsafe extern "C" fn _sapp_x11_destroy_window() {
     if _sapp_x11_window != 0 {
-        XUnmapWindow(_sapp_x11_display, _sapp_x11_window);
-        XDestroyWindow(_sapp_x11_display, _sapp_x11_window);
+        XUnmapWindow(get_val(&_sapp_x11_display), _sapp_x11_window);
+        XDestroyWindow(get_val(&_sapp_x11_display), _sapp_x11_window);
         _sapp_x11_window = 0 as libc::c_int as Window
     }
     if _sapp_x11_colormap != 0 {
-        XFreeColormap(_sapp_x11_display, _sapp_x11_colormap);
+        XFreeColormap(get_val(&_sapp_x11_display), _sapp_x11_colormap);
         _sapp_x11_colormap = 0 as libc::c_int as Colormap
     }
-    XFlush(_sapp_x11_display);
+    XFlush(get_val(&_sapp_x11_display));
 }
-pub static mut _sapp_x11_display: *mut Display = 0 as *const Display as *mut Display;
+
+thread_local! {
+    pub static _sapp_x11_display: RefCell<*mut Display> = RefCell::new(0 as *const Display as *mut Display);
+}
+//pub static mut _sapp_x11_display: *mut Display = 0 as *const Display as *mut Display;
 
 #[no_mangle]
 pub unsafe extern "C" fn sapp_run(mut desc: *const sapp_desc) {
     _sapp_init_state(desc);
-    _sapp_x11_window_state = NormalState;
+    
+    set_val(&_sapp_x11_window_state, NormalState);
+    
     XInitThreads();
     XrmInitialize();
-    _sapp_x11_display = XOpenDisplay(std::ptr::null());
-    if _sapp_x11_display.is_null() {
+    set_val(&_sapp_x11_display, XOpenDisplay(std::ptr::null()));
+    if get_val(&_sapp_x11_display).is_null() {
         _sapp_fail("XOpenDisplay() failed!");
     }
-    _sapp_x11_screen = (*(_sapp_x11_display as _XPrivDisplay)).default_screen;
-    _sapp_x11_root = (*(*(_sapp_x11_display as _XPrivDisplay))
+    _sapp_x11_screen = (*(get_val(&_sapp_x11_display) as _XPrivDisplay)).default_screen;
+    _sapp_x11_root = (*(*(get_val(&_sapp_x11_display) as _XPrivDisplay))
         .screens
-        .offset((*(_sapp_x11_display as _XPrivDisplay)).default_screen as isize))
+        .offset((*(get_val(&_sapp_x11_display) as _XPrivDisplay)).default_screen as isize))
     .root;
-    XkbSetDetectableAutoRepeat(_sapp_x11_display, true as _, std::ptr::null_mut());
+    XkbSetDetectableAutoRepeat(get_val(&_sapp_x11_display), true as _, std::ptr::null_mut());
 
     // because X11 Xft.dpi may be not presented on the linux system at all
     // and _sapp_x11_query_system_dpi will keep _sapp_x11_dpi as 0
@@ -2773,11 +2796,11 @@ pub unsafe extern "C" fn sapp_run(mut desc: *const sapp_desc) {
         sapp_set_fullscreen(true);
     }
     _sapp_glx_swapinterval(_sapp.swap_interval);
-    XFlush(_sapp_x11_display);
+    XFlush(get_val(&_sapp_x11_display));
 
     while !_sapp.quit_ordered {
         _sapp_glx_make_current();
-        let mut count = XPending(_sapp_x11_display);
+        let mut count = XPending(get_val(&_sapp_x11_display));
         loop {
             let fresh1 = count;
             count = count - 1;
@@ -2785,12 +2808,12 @@ pub unsafe extern "C" fn sapp_run(mut desc: *const sapp_desc) {
                 break;
             }
             let mut event = _XEvent { type_0: 0 };
-            XNextEvent(_sapp_x11_display, &mut event);
+            XNextEvent(get_val(&_sapp_x11_display), &mut event);
             _sapp_x11_process_event(&mut event);
         }
         _sapp_frame();
         _sapp_glx_swap_buffers();
-        XFlush(_sapp_x11_display);
+        XFlush(get_val(&_sapp_x11_display));
         if _sapp.quit_requested as libc::c_int != 0 && !_sapp.quit_ordered {
             _sapp_x11_app_event(sapp_event_type_SAPP_EVENTTYPE_QUIT_REQUESTED);
             if _sapp.quit_requested {
@@ -2801,7 +2824,7 @@ pub unsafe extern "C" fn sapp_run(mut desc: *const sapp_desc) {
     _sapp_call_cleanup();
     _sapp_glx_destroy_context();
     _sapp_x11_destroy_window();
-    XCloseDisplay(_sapp_x11_display);
+    XCloseDisplay(get_val(&_sapp_x11_display));
 }
 #[no_mangle]
 pub unsafe extern "C" fn sapp_frame_count() -> u64 {
@@ -2833,11 +2856,11 @@ pub unsafe extern "C" fn sapp_mouse_shown() -> bool {
 }
 
 pub unsafe extern "C" fn sapp_set_cursor_grab(mut grab: bool) {
-    XUngrabPointer(_sapp_x11_display, 0);
+    XUngrabPointer(get_val(&_sapp_x11_display), 0);
 
     if grab {
         XGrabPointer(
-            _sapp_x11_display,
+            get_val(&_sapp_x11_display),
             _sapp_x11_window,
             true as _,
             (ButtonPressMask
@@ -2861,7 +2884,7 @@ pub unsafe extern "C" fn sapp_set_cursor_grab(mut grab: bool) {
         );
     }
 
-    XFlush(_sapp_x11_display);
+    XFlush(get_val(&_sapp_x11_display));
 }
 
 pub unsafe extern "C" fn sapp_set_mouse_cursor(cursor_icon: u32) {
@@ -2908,12 +2931,12 @@ pub unsafe fn sapp_set_fullscreen(fullscreen: bool) {
     _sapp.desc.fullscreen = fullscreen as _;
 
     let mut wm_state = XInternAtom(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         b"_NET_WM_STATE\x00" as *const u8 as *const libc::c_char,
         false as _,
     );
     let wm_fullscreen = XInternAtom(
-        _sapp_x11_display,
+        get_val(&_sapp_x11_display),
         b"_NET_WM_STATE_FULLSCREEN\x00" as *const u8 as *const libc::c_char,
         false as _,
     );
