@@ -298,14 +298,16 @@ pub struct _sapp_state {
     pub keycodes: [sapp_keycode; 512],
 }
 
-/// opcode from XQueryExtension("XInputExtension")
-static mut _sapp_xi_extension_opcode: i32 = -1;
+
+
 
 thread_local! {
     static _sapp_empty_cursor: RefCell<x_cursor::Cursor> = RefCell::new(0);
     static _sapp_cursor_cache: RefCell<[x_cursor::Cursor; SAPP_CURSOR_NUM]> = RefCell::new([0; SAPP_CURSOR_NUM]);
     static _sapp_cursor_icon: RefCell<u32> = RefCell::new(SAPP_CURSOR_DEFAULT);
     static _sapp_cursor_shown: RefCell<bool> = RefCell::new(true);
+    /// opcode from XQueryExtension("XInputExtension")
+    static _sapp_xi_extension_opcode: RefCell<i32> = RefCell::new(-1);
 }
 
 
@@ -467,8 +469,8 @@ pub unsafe extern "C" fn _sapp_x11_create_window(mut visual: *mut Visual, mut de
         _sapp_fail("X11: Failed to create window");
     }
 
-    _sapp_xi_extension_opcode = xi_input::query_xi_extension()
-        .unwrap_or_else(|| panic!("Failed to initialize XInputExtension"));
+    set_val(&_sapp_xi_extension_opcode, xi_input::query_xi_extension()
+        .unwrap_or_else(|| panic!("Failed to initialize XInputExtension")));
 
     set_val(&_sapp_empty_cursor, x_cursor::create_empty_cursor());
 
@@ -611,36 +613,36 @@ thread_local! {
 
 
 pub unsafe extern "C" fn _sapp_x11_init_extensions() {
-    _sapp_x11_UTF8_STRING = XInternAtom(
+    set_val(&_sapp_x11_UTF8_STRING, XInternAtom(
         get_val(&_sapp_x11_display),
         b"UTF8_STRING\x00" as *const u8 as *const libc::c_char,
         false as _,
-    );
-    _sapp_x11_WM_PROTOCOLS = XInternAtom(
+    ));
+    set_val(&_sapp_x11_WM_PROTOCOLS, XInternAtom(
         get_val(&_sapp_x11_display),
         b"WM_PROTOCOLS\x00" as *const u8 as *const libc::c_char,
         false as _,
-    );
+    ));
     set_val(&_sapp_x11_WM_DELETE_WINDOW, XInternAtom(
         get_val(&_sapp_x11_display),
         b"WM_DELETE_WINDOW\x00" as *const u8 as *const libc::c_char,
         false as _,
     ));
-    _sapp_x11_WM_STATE = XInternAtom(
+    set_val(&_sapp_x11_WM_STATE, XInternAtom(
         get_val(&_sapp_x11_display),
         b"WM_STATE\x00" as *const u8 as *const libc::c_char,
         false as _,
-    );
-    _sapp_x11_NET_WM_NAME = XInternAtom(
+    ));
+    set_val(&_sapp_x11_NET_WM_NAME, XInternAtom(
         get_val(&_sapp_x11_display),
         b"_NET_WM_NAME\x00" as *const u8 as *const libc::c_char,
         false as _,
-    );
-    _sapp_x11_NET_WM_ICON_NAME = XInternAtom(
+    ));
+    set_val(&_sapp_x11_NET_WM_ICON_NAME, XInternAtom(
         get_val(&_sapp_x11_display),
         b"_NET_WM_ICON_NAME\x00" as *const u8 as *const libc::c_char,
         false as _,
-    );
+    ));
 }
 
 thread_local! {
@@ -739,8 +741,8 @@ pub unsafe extern "C" fn _sapp_glx_init() {
     unsafe fn load<T: Sized>(lib: *mut libc::c_void, symbol: &[u8]) -> T {
         ::std::mem::transmute_copy::<*mut libc::c_void, T>(&dlsym(lib, symbol.as_ptr() as _))
     }
-    _sapp_glx_GetFBConfigs = load(get_val(&_sapp_glx_libgl), b"glXGetFBConfigs\x00");
-    _sapp_glx_GetFBConfigAttrib = load(get_val(&_sapp_glx_libgl), b"glXGetFBConfigAttrib\x00");
+    set_val(&_sapp_glx_GetFBConfigs, load(get_val(&_sapp_glx_libgl), b"glXGetFBConfigs\x00"));
+    set_val(&_sapp_glx_GetFBConfigAttrib, load(get_val(&_sapp_glx_libgl), b"glXGetFBConfigAttrib\x00"));
     set_val(&_sapp_glx_GetClientString, load(get_val(&_sapp_glx_libgl), b"glXGetClientString\x00"));
     set_val(&_sapp_glx_QueryExtension, load(get_val(&_sapp_glx_libgl), b"glXQueryExtension\x00"));
     set_val(&_sapp_glx_QueryVersion, load(get_val(&_sapp_glx_libgl), b"glXQueryVersion\x00"));
@@ -754,8 +756,8 @@ pub unsafe extern "C" fn _sapp_glx_init() {
     set_val(&_sapp_glx_GetProcAddress, load(get_val(&_sapp_glx_libgl), b"glXGetProcAddress\x00"));
     set_val(&_sapp_glx_GetProcAddressARB, load(get_val(&_sapp_glx_libgl), b"glXGetProcAddressARB\x00"));
     set_val(&_sapp_glx_GetVisualFromFBConfig, load(get_val(&_sapp_glx_libgl), b"glXGetVisualFromFBConfig\x00"));
-    if _sapp_glx_GetFBConfigs.is_none()
-        || _sapp_glx_GetFBConfigAttrib.is_none()
+    if get_val(&_sapp_glx_GetFBConfigs).is_none()
+        || get_val(&_sapp_glx_GetFBConfigAttrib).is_none()
         || get_val(&_sapp_glx_GetClientString).is_none()
         || get_val(&_sapp_glx_QueryExtension).is_none()
         || get_val(&_sapp_glx_QueryVersion).is_none()
@@ -796,13 +798,13 @@ pub unsafe extern "C" fn _sapp_glx_init() {
         get_val(&_sapp_x11_screen),
     );
     if _sapp_glx_extsupported(b"GLX_EXT_swap_control\x00", exts) {
-        _sapp_glx_SwapIntervalEXT =
-            _sapp_glx_getprocaddr::<PFNGLXSWAPINTERVALEXTPROC>(b"glXSwapIntervalEXT\x00");
-        _sapp_glx_EXT_swap_control = _sapp_glx_SwapIntervalEXT.is_some()
+        set_val(&_sapp_glx_SwapIntervalEXT, 
+            _sapp_glx_getprocaddr::<PFNGLXSWAPINTERVALEXTPROC>(b"glXSwapIntervalEXT\x00"));
+        set_val(&_sapp_glx_EXT_swap_control, get_val(&_sapp_glx_SwapIntervalEXT).is_some())
     }
     if _sapp_glx_extsupported(b"GLX_MESA_swap_control\x00", exts) {
-        _sapp_glx_SwapIntervalMESA = _sapp_glx_getprocaddr(b"glXSwapIntervalMESA\x00");
-        _sapp_glx_MESA_swap_control = _sapp_glx_SwapIntervalMESA.is_some()
+        set_val(&_sapp_glx_SwapIntervalMESA, _sapp_glx_getprocaddr(b"glXSwapIntervalMESA\x00"));
+        set_val(&_sapp_glx_MESA_swap_control, get_val(&_sapp_glx_SwapIntervalMESA).is_some())
     }
     set_val(&_sapp_glx_ARB_multisample, _sapp_glx_extsupported(b"GLX_ARB_multisample\x00", exts));
     set_val(&_sapp_glx_ARB_framebuffer_sRGB, _sapp_glx_extsupported(b"GLX_ARB_framebuffer_sRGB\x00", exts));
@@ -810,10 +812,10 @@ pub unsafe extern "C" fn _sapp_glx_init() {
     if _sapp_glx_extsupported(b"GLX_ARB_create_context\x00", exts) {
         set_val(&_sapp_glx_CreateContextAttribsARB,
             _sapp_glx_getprocaddr(b"glXCreateContextAttribsARB\x00"));
-        _sapp_glx_ARB_create_context = get_val(&_sapp_glx_CreateContextAttribsARB).is_some()
+        set_val(&_sapp_glx_ARB_create_context, get_val(&_sapp_glx_CreateContextAttribsARB).is_some())
     }
-    _sapp_glx_ARB_create_context_profile =
-        _sapp_glx_extsupported(b"GLX_ARB_create_context_profile\x00", exts);
+    set_val(&_sapp_glx_ARB_create_context_profile,
+        _sapp_glx_extsupported(b"GLX_ARB_create_context_profile\x00", exts));
 }
 
 thread_local! {
@@ -845,13 +847,14 @@ pub unsafe extern "C" fn _sapp_glx_choose_visual(
 
 thread_local! {
     pub static _sapp_x11_root: RefCell<Window> = RefCell::new(0);
+    pub static _sapp_x11_NET_WM_NAME: RefCell<Atom> = RefCell::new(0);
+    pub static _sapp_x11_NET_WM_ICON_NAME: RefCell<Atom> = RefCell::new(0);
+    pub static _sapp_x11_UTF8_STRING: RefCell<Atom> = RefCell::new(0);
 }
-//pub static mut _sapp_x11_root: Window = 0;
+//pub static  _sapp_x11_root: Window = 0;
 
 
-pub static mut _sapp_x11_NET_WM_NAME: Atom = 0;
-pub static mut _sapp_x11_NET_WM_ICON_NAME: Atom = 0;
-pub static mut _sapp_x11_UTF8_STRING: Atom = 0;
+
 pub unsafe extern "C" fn _sapp_x11_update_window_title() {
     Xutf8SetWMProperties(
         get_val(&_sapp_x11_display),
@@ -867,8 +870,8 @@ pub unsafe extern "C" fn _sapp_x11_update_window_title() {
     XChangeProperty(
         get_val(&_sapp_x11_display),
         get_val(&_sapp_x11_window),
-        _sapp_x11_NET_WM_NAME,
-        _sapp_x11_UTF8_STRING,
+        get_val(&_sapp_x11_NET_WM_NAME),
+        get_val(&_sapp_x11_UTF8_STRING),
         8 as libc::c_int,
         PropModeReplace,
         get_val(&_sapp).window_title.as_mut_ptr() as *mut libc::c_uchar,
@@ -877,8 +880,8 @@ pub unsafe extern "C" fn _sapp_x11_update_window_title() {
     XChangeProperty(
         get_val(&_sapp_x11_display),
         get_val(&_sapp_x11_window),
-        _sapp_x11_NET_WM_ICON_NAME,
-        _sapp_x11_UTF8_STRING,
+        get_val(&_sapp_x11_NET_WM_ICON_NAME),
+        get_val(&_sapp_x11_UTF8_STRING),
         8 as libc::c_int,
         PropModeReplace,
         get_val(&_sapp).window_title.as_mut_ptr() as *mut libc::c_uchar,
@@ -918,18 +921,16 @@ pub unsafe extern "C" fn _sapp_x11_query_window_size() {
     get_val_mut(&_sapp).framebuffer_width = get_val(&_sapp).window_width;
     get_val_mut(&_sapp).framebuffer_height = get_val(&_sapp).framebuffer_height;
 }
-pub static mut _sapp_glx_ARB_create_context: bool = false;
-pub static mut _sapp_glx_ARB_create_context_profile: bool = false;
-pub static mut _sapp_x11_error_code: libc::c_uchar = 0;
+
 pub unsafe extern "C" fn _sapp_x11_error_handler(
     mut display: *mut Display,
     mut event: *mut XErrorEvent,
 ) -> libc::c_int {
-    _sapp_x11_error_code = (*event).error_code;
+    set_val(&_sapp_x11_error_code, (*event).error_code);
     return 0 as libc::c_int;
 }
 pub unsafe extern "C" fn _sapp_x11_grab_error_handler() {
-    _sapp_x11_error_code = Success as libc::c_uchar;
+    set_val(&_sapp_x11_error_code, Success as libc::c_uchar);
     XSetErrorHandler(Some(
         _sapp_x11_error_handler
             as unsafe extern "C" fn(_: *mut Display, _: *mut XErrorEvent) -> libc::c_int,
@@ -938,6 +939,10 @@ pub unsafe extern "C" fn _sapp_x11_grab_error_handler() {
 
 thread_local! {
     pub static _sapp_glx_CreateContextAttribsARB: RefCell<PFNGLXCREATECONTEXTATTRIBSARBPROC> = RefCell::new(None);
+
+    pub static _sapp_glx_ARB_create_context: RefCell<bool> = RefCell::new(false);
+    pub static _sapp_glx_ARB_create_context_profile: RefCell<bool> = RefCell::new(false);
+    pub static _sapp_x11_error_code: RefCell<libc::c_uchar> = RefCell::new(0);
 }
 
 pub const GLX_CONTEXT_MAJOR_VERSION_ARB: libc::c_int = 0x2091 as libc::c_int;
@@ -951,20 +956,14 @@ pub unsafe extern "C" fn _sapp_x11_release_error_handler() {
     XSetErrorHandler(None);
 }
 
-thread_local! {
-    pub static _sapp_glx_CreateWindow: RefCell<PFNGLXCREATEWINDOWPROC> = RefCell::new(None);
-}
-
-thread_local! {
-    pub static _sapp_glx_GetClientString: RefCell<PFNGLXGETCLIENTSTRINGPROC> = RefCell::new(None);
-}
-
-
 pub const GLX_VENDOR: libc::c_int = 1 as libc::c_int;
-pub static mut _sapp_glx_GetFBConfigs: PFNGLXGETFBCONFIGSPROC = None;
+
 
 thread_local! {
     pub static _sapp_x11_screen: RefCell<libc::c_int> = RefCell::new(0);
+    pub static _sapp_glx_GetFBConfigs: RefCell<PFNGLXGETFBCONFIGSPROC> = RefCell::new(None);
+    pub static _sapp_glx_GetClientString: RefCell<PFNGLXGETCLIENTSTRINGPROC> = RefCell::new(None);
+    pub static _sapp_glx_CreateWindow: RefCell<PFNGLXCREATEWINDOWPROC> = RefCell::new(None);
 }
 
 //pub static mut _sapp_x11_screen: libc::c_int = 0;
@@ -982,16 +981,17 @@ pub const GLX_DOUBLEBUFFER: libc::c_int = 5 as libc::c_int;
 
 thread_local! {
     pub static _sapp_glx_ARB_multisample: RefCell<bool> = RefCell::new(false);
+    pub static _sapp_glx_GetFBConfigAttrib: RefCell<PFNGLXGETFBCONFIGATTRIBPROC> = RefCell::new(None);
 }
 
 
-pub static mut _sapp_glx_GetFBConfigAttrib: PFNGLXGETFBCONFIGATTRIBPROC = None;
+
 pub unsafe extern "C" fn _sapp_glx_attrib(
     mut fbconfig: GLXFBConfig,
     mut attrib: libc::c_int,
 ) -> libc::c_int {
     let mut value: libc::c_int = 0;
-    _sapp_glx_GetFBConfigAttrib.expect("non-null function pointer")(
+    get_val(&_sapp_glx_GetFBConfigAttrib).expect("non-null function pointer")(
         get_val(&_sapp_x11_display),
         fbconfig,
         attrib,
@@ -1126,7 +1126,7 @@ pub unsafe extern "C" fn _sapp_glx_choosefbconfig() -> GLXFBConfig {
     {
         trust_window_bit = false
     }
-    native_configs = _sapp_glx_GetFBConfigs.expect("non-null function pointer")(
+    native_configs = get_val(&_sapp_glx_GetFBConfigs).expect("non-null function pointer")(
         get_val(&_sapp_x11_display),
         get_val(&_sapp_x11_screen),
         &mut native_count,
@@ -1202,7 +1202,7 @@ pub unsafe extern "C" fn _sapp_glx_create_context() {
     if native.is_null() {
         _sapp_fail("GLX: Failed to find a suitable GLXFBConfig (2)");
     }
-    if !(_sapp_glx_ARB_create_context && _sapp_glx_ARB_create_context_profile) {
+    if !(get_val(&_sapp_glx_ARB_create_context) && get_val(&_sapp_glx_ARB_create_context_profile)) {
         _sapp_fail("GLX: ARB_create_context and ARB_create_context_profile required");
     }
     _sapp_x11_grab_error_handler();
@@ -1375,25 +1375,26 @@ unsafe fn _sapp_x11_send_event(t: Atom, a: isize, b: isize, c: isize, d: isize, 
     );
 }
 
-pub static mut _sapp_glx_EXT_swap_control: bool = false;
-pub static mut _sapp_glx_SwapIntervalEXT: PFNGLXSWAPINTERVALEXTPROC = None;
-pub static mut _sapp_glx_MESA_swap_control: bool = false;
-pub static mut _sapp_glx_SwapIntervalMESA: PFNGLXSWAPINTERVALMESAPROC = None;
+
 pub unsafe extern "C" fn _sapp_glx_swapinterval(mut interval: libc::c_int) {
     _sapp_glx_make_current();
-    if _sapp_glx_EXT_swap_control {
-        _sapp_glx_SwapIntervalEXT.expect("non-null function pointer")(
+    if get_val(&_sapp_glx_EXT_swap_control) {
+        get_val(&_sapp_glx_SwapIntervalEXT).expect("non-null function pointer")(
             get_val(&_sapp_x11_display),
             get_val(&_sapp_glx_window),
             interval,
         );
-    } else if _sapp_glx_MESA_swap_control {
-        _sapp_glx_SwapIntervalMESA.expect("non-null function pointer")(interval);
+    } else if get_val(&_sapp_glx_MESA_swap_control) {
+        get_val(&_sapp_glx_SwapIntervalMESA).expect("non-null function pointer")(interval);
     };
 }
 
 thread_local! {
     pub static _sapp_glx_MakeCurrent: RefCell<PFNGLXMAKECURRENTPROC> = RefCell::new(None);
+    pub static _sapp_glx_EXT_swap_control: RefCell<bool> = RefCell::new(false);
+    pub static _sapp_glx_SwapIntervalEXT: RefCell<PFNGLXSWAPINTERVALEXTPROC> = RefCell::new(None);
+    pub static _sapp_glx_MESA_swap_control: RefCell<bool> = RefCell::new(false);
+    pub static _sapp_glx_SwapIntervalMESA: RefCell<PFNGLXSWAPINTERVALMESAPROC> = RefCell::new(None);
 }
 
 
@@ -2530,13 +2531,13 @@ pub unsafe extern "C" fn _sapp_x11_get_window_property(
     );
     return itemCount;
 }
-pub static mut _sapp_x11_WM_STATE: Atom = 0;
+
 pub unsafe extern "C" fn _sapp_x11_get_window_state() -> libc::c_int {
     let mut result = WithdrawnState;
     let mut state: *mut C2RustUnnamed_1 = std::ptr::null_mut();
     if _sapp_x11_get_window_property(
-        _sapp_x11_WM_STATE,
-        _sapp_x11_WM_STATE,
+        get_val(&_sapp_x11_WM_STATE),
+        get_val(&_sapp_x11_WM_STATE),
         &mut state as *mut *mut C2RustUnnamed_1 as *mut *mut libc::c_uchar,
     ) >= 2
     {
@@ -2547,10 +2548,12 @@ pub unsafe extern "C" fn _sapp_x11_get_window_state() -> libc::c_int {
     }
     return result;
 }
-pub static mut _sapp_x11_WM_PROTOCOLS: Atom = 0;
+
 
 thread_local! {
     pub static _sapp_x11_WM_DELETE_WINDOW: RefCell<Atom> = RefCell::new(0);
+    pub static _sapp_x11_WM_PROTOCOLS: RefCell<Atom> = RefCell::new(0);
+    pub static _sapp_x11_WM_STATE: RefCell<Atom> = RefCell::new(0);
 }
 
 
@@ -2660,7 +2663,7 @@ pub unsafe extern "C" fn _sapp_x11_process_event(mut event: *mut XEvent) {
         }
         28 => {
             if (*event).xproperty.state == PropertyNewValue {
-                if (*event).xproperty.atom == _sapp_x11_WM_STATE {
+                if (*event).xproperty.atom == get_val(&_sapp_x11_WM_STATE) {
                     let state = _sapp_x11_get_window_state();
                     if state != get_val(&_sapp_x11_window_state) {
                         set_val(&_sapp_x11_window_state, state);
@@ -2674,7 +2677,7 @@ pub unsafe extern "C" fn _sapp_x11_process_event(mut event: *mut XEvent) {
             }
         }
         33 => {
-            if (*event).xclient.message_type == _sapp_x11_WM_PROTOCOLS {
+            if (*event).xclient.message_type == get_val(&_sapp_x11_WM_PROTOCOLS) {
                 let protocol = (*event).xclient.data.l[0 as libc::c_int as usize] as Atom;
                 if protocol == get_val(&_sapp_x11_WM_DELETE_WINDOW) {
                     get_val_mut(&_sapp).quit_requested = true
@@ -2693,7 +2696,7 @@ pub unsafe extern "C" fn _sapp_x11_process_event(mut event: *mut XEvent) {
         17 => {}
 
         // GenericEvent
-        35 if (*event).xcookie.extension == _sapp_xi_extension_opcode => {
+        35 if (*event).xcookie.extension == get_val(&_sapp_xi_extension_opcode) => {
             if (*event).xcookie.evtype == crate::xi_input::XI_RawMotion {
                 let (dx, dy) = crate::xi_input::read_cookie(&mut (*event).xcookie);
                 _sapp_x11_raw_device_event(dx as f32, dy as f32);
